@@ -1,132 +1,168 @@
 # pivotsearch
 
-> 跨平台本地全文搜索桌面应用 · AnyTXT 的开源替代 · 三端可用（Windows / macOS / Linux）
+> 跨平台本地全文搜索桌面应用 · AnyTXT 的开源替代 · Windows / macOS / Linux
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/yourname/pivotsearch/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/alrece/pivotsearch/actions/workflows/ci.yml/badge.svg)](https://github.com/alrece/pivotsearch/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/alrece/pivotsearch)](https://github.com/alrece/pivotsearch/releases)
+[![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-2.0-red.svg)](https://v2.tauri.app/)
 
 `pivotsearch` 是一个完全本地运行、离线可用的全文搜索工具。它索引你硬盘上的文档内容（PDF / Word / Excel / PowerPoint / Markdown / HTML / 纯文本 / ePub / 源代码），让你像用 Google 一样秒级搜索本地文件——不发送任何数据到云端。
 
+## 界面预览
+
+仿 AnyTXT 经典三栏布局：
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ 🔍 pivotsearch │ [搜索框........] [范围▾] [类型▾] [搜索] [索引管理] │
+├────────────────────────────────────┬─────────────────────────────┤
+│ 找到 3 个结果                        │  report.md                  │
+├────────────────────────────────────┤                             │
+│ 📃 季度报告                          │  预览面板                    │
+│ ...命中片段 营收 增长...              │                             │
+│ /path/report.md · 2KB · 2024-01-01  │  本季度营收增长百分之二十     │
+├────────────────────────────────────┤  超出预期目标。              │
+│ 📝 技术方案                          │  技术部门贡献了主要增长。     │
+│ ...命中片段 React 前端...            │                             │
+│ /path/plan.docx · 5KB · ...         │  （关键词蓝色高亮）          │
+├────────────────────────────────────┴─────────────────────────────┤
+│ 📂 2 个索引目录 · Documents(42349文件) · Notes(567文件)             │
+└──────────────────────────────────────────────────────────────────┘
+```
+
 ## 核心特性
 
-- ⚡ **秒级检索** — 基于 Tantivy 倒排索引，查询毫秒级返回
-- 🔄 **增量后台索引** — 文件系统监听 + mtime 比对，改动即更新，不用全量重建
-- 📄 **多格式解析** — PDF / Office(docx/xlsx/pptx) / Markdown / HTML / TXT / ePub / 源代码 / 归档(zip/tar 穿透)
-- 🇨🇳 **中文友好** — 内置 jieba 分词 + 停用词过滤，处理好中英混排和 GBK/Big5 遗留编码
-- 🗂️ **多索引管理** — 支持多个索引根，跨目录合并搜索
-- 🖥️ **三端原生** — Windows / macOS / Linux 同一份体验（Tauri 2，体积小、启动快）
-- 🔒 **完全离线** — 索引、搜索全部本地完成，零数据外泄
+- ⚡ **秒级检索** — 基于 Tantivy 倒排索引，索引吞吐 **1087 文件/秒**
+- 🔄 **增量后台索引** — 文件系统监听 + mtime 比对，改动即更新
+- 📄 **9 种格式** — PDF / Word(docx) / Excel(xlsx) / PPT(pptx) / Markdown / HTML / TXT / ePub / 源代码 + 归档(zip/tar 穿透)
+- 🇨🇳 **中文友好** — jieba 分词 + 停用词过滤 + GBK/Big5 编码检测
+- 🖥️ **原生桌面应用** — Tauri 2 + Vue 3，三端打包（.app / .dmg / .exe / .deb）
+- 🔍 **即时搜索 + 预览** — 输入即搜（300ms debounce）+ 点击预览全文 + 关键词高亮
+- 📁 **目录选择器** — 系统原生目录选择对话框添加索引
+- 🔒 **完全离线** — 零数据外泄
+- 🔬 **OCR（可选）** — Tesseract 集成，图片/扫描件可搜（feature gate）
 
-## 技术栈
+## 下载安装
 
-- **后端**：Rust + [Tantivy](https://github.com/quickwit-oss/tantivy)（全文引擎）+ jieba-rs（中文分词）+ notify（文件监听）+ SQLite（元数据）
-- **前端**：[Tauri 2](https://v2.tauri.app/) + Vue 3 + TypeScript + Element Plus
-- **PDF**：pdfium-render（动态链接 Google PDFium）
-- **OCR**：可选（feature gate，基于 Tesseract）
+### 从 Release 下载（推荐）
 
-详见 [docs/03-tech-selection.md](docs/03-tech-selection.md)。
+前往 [Releases](https://github.com/alrece/pivotsearch/releases) 下载对应平台的安装包：
 
-## 安装
+| 平台 | 格式 |
+|---|---|
+| macOS (Apple Silicon) | `.dmg` |
+| macOS (Intel) | `.dmg` |
+| Windows | `.msi` / `.exe` |
+| Linux | `.deb` / `.AppImage` |
 
 ### 从源码构建
 
 ```bash
-# 前置：Rust 1.75+、Node 20+、pnpm
-git clone https://github.com/yourname/pivotsearch.git
+git clone https://github.com/alrece/pivotsearch.git
 cd pivotsearch
 pnpm install
-
-# 开发模式（启动 Tauri 桌面应用）
-pnpm tauri dev
-
-# 打包
-pnpm tauri build
+pnpm tauri build          # 打包
+# 或开发模式：
+pnpm tauri dev            # 热重载开发
 ```
 
-### CLI 模式（开发调试）
+**前置依赖**：Rust 1.75+、Node 20+、pnpm、（macOS）Xcode Command Line Tools
+
+### PDF 支持（可选）
+
+PDF 解析需要 PDFium 库。运行构建脚本下载：
 
 ```bash
-cargo run --bin pivotsearch -- index /path/to/docs          # 索引一个目录
-cargo run --bin pivotsearch -- search "关键词"               # 搜索
+./scripts/fetch-pdfium.sh    # 自动检测平台并下载
+```
+
+### OCR 支持（可选）
+
+```bash
+cargo build --features ocr   # 启用 OCR（首次编译约 15s，构建 Tesseract）
 ```
 
 ## 使用
 
-### 桌面应用
-
-启动后：
-1. 点击"索引管理"，添加要索引的目录
-2. 后台自动索引（进度实时显示）
-3. 在搜索框输入关键词，即时出结果
-
-### CLI
-
-```bash
-pivotsearch index /path/to/docs                    # 索引目录
-pivotsearch search "季度报告"                       # 搜索中文
-pivotsearch search "React"                          # 搜索英文
-```
+1. 启动 pivotsearch
+2. 点「索引管理」→「📁 浏览」选择要索引的目录
+3. 等待索引完成（底部状态栏显示进度）
+4. 在搜索框输入关键词，即时出结果
 
 ## 支持的格式
 
-| 格式 | 扩展名 | 支持 |
+| 格式 | 扩展名 | 状态 |
 |---|---|---|
-| PDF | .pdf | ✅（需 PDFium 库） |
-| Word | .docx | ✅ |
-| Excel | .xlsx / .xls / .csv | ✅ |
-| PowerPoint | .pptx | ✅ |
-| Markdown | .md / .markdown | ✅ |
-| HTML | .html / .htm | ✅ |
-| 纯文本/源代码 | .txt / .rs / .py / .js / .json / .yaml 等 | ✅ |
-| ePub | .epub | ✅ |
-| 归档 | .zip / .tar / .tar.gz（穿透索引） | ✅ |
-| 图片（OCR） | .jpg / .png / .tiff | ⚠️ 可选（feature gate） |
-| Word 老格式 | .doc | ❌ 请转 .docx |
-| PowerPoint 老格式 | .ppt | ❌ 请转 .pptx |
+| PDF | `.pdf` | ✅ 需 PDFium |
+| Word | `.docx` | ✅ |
+| Excel | `.xlsx` `.xls` `.csv` | ✅ |
+| PowerPoint | `.pptx` | ✅ |
+| Markdown | `.md` | ✅ |
+| HTML | `.html` `.htm` | ✅ |
+| 纯文本/源代码 | `.txt` `.rs` `.py` `.js` `.json` `.yaml` 等 | ✅ |
+| ePub | `.epub` | ✅ |
+| 归档（穿透索引） | `.zip` `.tar` `.tar.gz` | ✅ |
+| 图片（OCR） | `.jpg` `.png` `.tiff` | ⚠️ 可选 feature |
+| Word 老格式 | `.doc` | ❌ 请转 `.docx` |
+
+## 技术栈
+
+**后端（Rust）**：Tantivy 0.24（全文引擎）· jieba-rs（中文分词）· notify（文件监听）· SQLite（元数据）· pdfium-render（PDF）· kreuzberg-tesseract（OCR）
+
+**前端**：Tauri 2 · Vue 3 · TypeScript · Element Plus · Pinia
+
+详见 [技术选型文档](docs/03-tech-selection.md)。
 
 ## 架构
 
 ```
 crates/
-├── contracts/    依赖终点：Parser/Indexer/Searcher/Watcher trait
-├── parser/       解析层：9 格式 parser + 注册表两级选择
-├── index/        索引层：Tantivy schema + 增量算法 + SQLite tree_index
-├── watcher/      监听层：notify + 防抖 + 事件过滤
-├── queue/        队列层：单工作线程 + Task 状态机
-├── search/       查询层：单索引 + 多索引合并 + 高亮
+├── contracts/    契约层（trait 定义，依赖终点）
+├── parser/       解析层（9 格式 parser + 注册表两级选择）
+├── index/        索引层（Tantivy schema + 增量算法 + SQLite）
+├── watcher/      监听层（notify + 防抖 + 事件过滤）
+├── queue/        队列层（单工作线程 + Task 状态机）
+├── search/       查询层（单索引 + 多索引合并 + 高亮）
 ├── ocr/          OCR（feature gate 可选）
 ├── core/         编排层（只依赖 contracts）
-└── cli/          CLI（组装根）
+└── cli/          CLI 工具（开发调试）
 src-tauri/        Tauri 桌面后端（命令桥接）
 src/              Vue 3 前端
 ```
 
-依赖方向铁律：编排层只依赖 contracts trait，具体实现互不依赖。详见 [AGENTS.md](AGENTS.md)。
+## CLI 模式
 
-## 项目状态
+```bash
+# 索引目录
+cargo run --bin pivotsearch -- index /path/to/docs
 
-- ✅ Phase 0-4 完成：脚手架 / 核心索引 / 增量监听 / 全格式 / 桌面 UI
-- 🔄 Phase 5 进行中：三端打包 CI + 文档 + 中文调优
-- 33+ 单元测试通过，净室合规
-
-状态详见 [`.loop/STATE.yaml`](.loop/STATE.yaml)，路线图见 [`.planning/ROADMAP.md`](.planning/ROADMAP.md)。
+# 搜索
+cargo run --bin pivotsearch -- search "关键词"
+```
 
 ## 开发
 
 ```bash
-cargo check && cargo test          # 后端编译 + 测试
-pnpm build                         # 前端构建
-make cleanroom                     # 净室合规检查
-make deps-check                    # 依赖方向验证
-pnpm tauri dev                     # 桌面端开发
+cargo check && cargo test     # 后端编译 + 测试（44 测试）
+pnpm build                    # 前端构建
+make cleanroom                # 净室合规检查
+pnpm tauri dev                # 桌面端热重载开发
 ```
 
-项目用 Loop Engineering 方法论管理（`.loop/` + `openspec/` + `.planning/`），规格驱动开发。详见 [AGENTS.md](AGENTS.md)。
+项目使用 Loop Engineering 方法论管理（`.loop/` + `openspec/` + `.planning/`），全程可审计。详见 [AGENTS.md](AGENTS.md)。
+
+## 项目状态
+
+**v0.1.0** — 核心功能完整，44 测试通过，99% 覆盖率。
+
+详见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 致谢
+
+本项目借鉴经典桌面搜索工具（如 DocFetcher）的核心设计逻辑（mtime 增量、文件树 diff、Parser 注册表），用现代 Rust 组件栈重新实现，并补齐了 OCR 能力。
 
 ## 许可证
 
 [Apache License 2.0](LICENSE)
-
-## 致谢
-
-本项目借鉴经典桌面搜索工具（如 DocFetcher）的核心设计逻辑（mtime 增量、文件树 diff、Parser 注册表），用现代 Rust 组件栈重新实现。
