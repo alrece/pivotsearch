@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "pivotsearch",
+        "title": "PivotSearch",
         "width": 1000,
         "height": 700,
         "minWidth": 700,

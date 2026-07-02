@@ -18,6 +18,36 @@ import {
   type PreviewData,
 } from "./api";
 
+// ═══ 面板宽度（可拖动分隔栏）═══
+const panelWidth = ref(50); // 左侧结果列表宽度百分比
+let isDragging = false;
+
+function startDrag() {
+  isDragging = true;
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+}
+
+function onDrag(e: MouseEvent) {
+  if (!isDragging) return;
+  const container = document.querySelector(".result-layout") as HTMLElement;
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const pct = ((e.clientX - rect.left) / rect.width) * 100;
+  panelWidth.value = Math.max(20, Math.min(80, pct));
+}
+
+function stopDrag() {
+  isDragging = false;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+}
+
+function closePreview() {
+  selectedIndex.value = -1;
+  previewData.value = null;
+}
+
 // ═══ 搜索状态 ═══
 const query = ref("");
 const results = ref<SearchResult[]>([]);
@@ -283,8 +313,22 @@ onMounted(async () => {
   }, 100);
 });
 
+onMounted(async () => {
+  window.addEventListener("mousemove", onDrag);
+  window.addEventListener("mouseup", stopDrag);
+  await refreshIndexes();
+  unlistenProgress = await onIndexProgress((p: IndexProgress) => {
+    progressMsg.value = p.message;
+  });
+  setTimeout(() => {
+    document.querySelector<HTMLInputElement>(".search-input input")?.focus();
+  }, 100);
+});
+
 onUnmounted(() => {
   if (unlistenProgress) unlistenProgress();
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", stopDrag);
 });
 </script>
 
@@ -294,7 +338,7 @@ onUnmounted(() => {
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">🔍</span>
-        <span class="logo-text">pivotsearch</span>
+        <span class="logo-text">PivotSearch</span>
       </div>
       <div class="search-input">
         <el-input
@@ -346,7 +390,7 @@ onUnmounted(() => {
       <!-- 搜索结果布局 -->
       <div v-else class="result-layout">
         <!-- 左：结果列表 -->
-        <div class="result-panel">
+        <div class="result-panel" :style="{ flex: '0 0 ' + panelWidth + '%' }">
           <!-- 结果头部 -->
           <div class="result-header" v-if="hasSearched">
             <span v-if="loading">搜索中...</span>
@@ -399,13 +443,21 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- 可拖动分隔栏 -->
+        <div
+          v-if="selectedIndex >= 0 || previewLoading"
+          class="splitter"
+          @mousedown="startDrag"
+        ></div>
+
         <!-- 右：预览面板 -->
         <div class="preview-panel" v-if="selectedIndex >= 0 || previewLoading">
           <div class="preview-header">
-            <span v-if="previewData">
+            <span v-if="previewData" class="preview-title">
               {{ previewData.path.split("/").pop() }}
             </span>
             <span v-else>加载中...</span>
+            <button class="preview-close" title="关闭预览" @click="closePreview">✕</button>
           </div>
           <div class="preview-content" v-loading="previewLoading">
             <div v-if="previewData && previewData.exists" class="preview-text">
@@ -530,10 +582,11 @@ body {
 }
 
 .logo-text {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 700;
   color: var(--ps-primary);
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .search-input {
@@ -598,11 +651,9 @@ body {
 
 /* 左：结果列表 */
 .result-panel {
-  flex: 1;
   overflow-y: auto;
   background: var(--ps-surface);
-  border-right: 1px solid var(--ps-border);
-  min-width: 300px;
+  min-width: 200px;
 }
 
 .result-header {
@@ -738,25 +789,65 @@ body {
   background: #e8e8e8;
 }
 
+/* 可拖动分隔栏 */
+.splitter {
+  width: 5px;
+  flex-shrink: 0;
+  background: var(--ps-border);
+  cursor: col-resize;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.splitter:hover,
+.splitter:active {
+  background: var(--ps-primary);
+}
+
 /* 右：预览面板 */
 .preview-panel {
-  width: 45%;
-  min-width: 300px;
+  flex: 1;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   background: var(--ps-surface);
+  overflow: hidden;
 }
 
 .preview-header {
-  padding: 8px 16px;
+  padding: 8px 12px;
   background: #f5f7fa;
   border-bottom: 1px solid var(--ps-border);
   font-size: 13px;
   font-weight: 600;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.preview-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.preview-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--ps-text-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
   flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
+.preview-close:hover {
+  background: #e8e8e8;
+  color: var(--ps-text);
 }
 
 .preview-content {
