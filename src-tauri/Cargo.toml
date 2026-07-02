@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0", features = [] }
+tauri = { version = "=2.11.4", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # pivotsearch 核心（组装根，可 import 具体实现）
