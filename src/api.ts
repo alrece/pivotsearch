@@ -109,3 +109,7 @@ export async function copyToClipboard(text: string): Promise<void> {
 export async function openInFolder(path: string): Promise<void> {
   return invoke<void>("open_in_folder", { path });
 }
+
+export async function installCli(): Promise<string> {
+  return invoke<string>("install_cli");
+}

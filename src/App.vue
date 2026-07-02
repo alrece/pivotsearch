@@ -12,6 +12,7 @@ import {
   onIndexProgress,
   copyToClipboard,
   openInFolder,
+  installCli,
   type SearchResult,
   type IndexInfo,
   type IndexProgress,
@@ -206,6 +207,15 @@ async function onOpenFolder(path: string) {
     await openInFolder(path);
   } catch (e) {
     ElMessage.error("打开目录失败");
+  }
+}
+
+async function onInstallCli() {
+  try {
+    const msg = await installCli();
+    ElMessage.success(msg);
+  } catch (e) {
+    ElMessage.error(`安装失败: ${e}`);
   }
 }
 
@@ -525,6 +535,11 @@ onUnmounted(() => {
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="cli-install">
+        <el-button @click="onInstallCli">💻 安装命令行工具 (psearch)</el-button>
+        <span class="cli-hint">安装后可在终端/Agent 中使用 psearch 命令</span>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -945,6 +960,20 @@ body {
 .index-add {
   display: flex;
   gap: 8px;
+}
+
+.cli-install {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ps-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cli-hint {
+  font-size: 12px;
+  color: var(--ps-text-secondary);
 }
 
 /* Element Plus 覆盖 */

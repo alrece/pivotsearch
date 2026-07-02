@@ -10,6 +10,7 @@ members = [
     "crates/ocr",
     "crates/core",
     "crates/cli",
+    "crates/psearch",
 ]
 # src-tauri 是独立 Tauri 项目（有自己的 target 和 tauri-build），排除在 workspace 外
 exclude = ["src-tauri"]
@@ -55,6 +56,10 @@ tracing = "0.1"
 # 并发
 parking_lot = "0.12"
 crossbeam-channel = "0.5"
+
+# CLI（psearch）
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
 
 [profile.release]
 opt-level = 3

@@ -1,0 +1,22 @@
+[package]
+name = "psearch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "psearch CLI — pivotsearch 命令行工具，供 AI Agent 调用"
+
+[[bin]]
+name = "psearch"
+path = "src/main.rs"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+pivotsearch-parser = { workspace = true }
+pivotsearch-index = { workspace = true }
+pivotsearch-search = { workspace = true }
+tantivy = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+dirs = { workspace = true }

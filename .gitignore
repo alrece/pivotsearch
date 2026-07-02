@@ -53,3 +53,5 @@ native/
 native/tessdata/
 # Tauri 打包产物
 src-tauri/target/
+# Tauri sidecar 产物（打包时生成）
+src-tauri/binaries/

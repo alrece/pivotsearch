@@ -437,6 +437,58 @@ async fn open_in_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 安装 psearch CLI 到系统 PATH（创建符号链接 /usr/local/bin/psearch → app 内的 sidecar）。
+#[tauri::command]
+async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
+    // 找到 app bundle 内的 psearch sidecar 路径
+    let exe_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("获取资源目录失败: {e}"))?;
+    // sidecar 在 Contents/MacOS/psearch (macOS)
+    let psearch_path = exe_dir.join("../../../MacOS/psearch");
+
+    // 实际路径（规范化的）
+    let psearch_real = if psearch_path.exists() {
+        psearch_path
+    } else {
+        // fallback：直接用当前可执行文件同目录
+        std::env::current_exe()
+            .map_err(|e| e.to_string())?
+            .parent()
+            .ok_or("无法定位可执行文件目录")?
+            .join("psearch")
+    };
+
+    if !psearch_real.exists() {
+        return Err("psearch CLI 未在 app bundle 中找到".to_string());
+    }
+
+    // 创建符号链接 /usr/local/bin/psearch → app 内 psearch
+    #[cfg(target_os = "macos")]
+    {
+        let link = std::path::PathBuf::from("/usr/local/bin/psearch");
+        let _ = std::fs::remove_file(&link);
+        std::os::unix::fs::symlink(&psearch_real, &link).map_err(|e| {
+            format!("创建符号链接失败: {e}\n请手动执行: sudo ln -sf {} {}", psearch_real.display(), link.display())
+        })?;
+        Ok(format!("✅ psearch 已安装到 {}\n终端可直接运行: psearch search \"关键词\" --json", link.display()))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let link = std::path::PathBuf::from("/usr/local/bin/psearch");
+        let _ = std::fs::remove_file(&link);
+        std::os::unix::fs::symlink(&psearch_real, &link).map_err(|e| e.to_string())?;
+        Ok(format!("✅ psearch 已安装到 {}", link.display()))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Err("Windows 请手动将 psearch.exe 添加到 PATH".to_string())
+    }
+}
+
 // ── 辅助函数 ──
 
 fn md5_hash(s: &str) -> u64 {
@@ -491,6 +543,7 @@ pub fn run() {
             rebuild_index,
             copy_to_clipboard,
             open_in_folder,
+            install_cli,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
