@@ -148,3 +148,23 @@
     - "命令桥接模式：#[tauri::command] + State<Arc<Mutex<EngineState>>> 共享，后台线程 std::thread::spawn + app.emit 进度"
     - "search 重新 open 模式：命令从 state.index_dirs 读路径，每次 open Tantivy Index + SimpleSearcher，避免跨线程移动句柄"
     - "icon 生成：Python struct+zlib 生成 PNG → tauri icon 命令生成全套（icns/ico/png）"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 5 — CI + 文档 + 中文调优（收尾）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T19:10:00Z
+  milestone: "Phase 5 收尾——三端 CI + 发布 workflow + 中文停用词 + README，全 5 Phase 闭环完成"
+  decisions:
+    - "CI 三 job：backend-test(三端矩阵)/frontend-build/tauri-build(三端矩阵)，含净室+依赖方向自动检查"
+    - "Release workflow：tag 触发，4 target 矩阵(linux/macos-arm64/macos-x64/windows)，tauri-action 自动出包"
+    - "jieba 停用词过滤：的/了/是/在等 35 个高频虚词，提升搜索精度（避免'我的报告'命中所有含'的'的文档）"
+    - "src-tauri 作为 workspace exclude 独立项目，Tauri build 依赖不污染主 workspace"
+  lessons:
+    - { kind: keep,   text: "5 Phase 全闭环完成：脚手架→核心索引→增量监听→全格式→桌面UI→CI发布，全程对抗门守护", source: "retro" }
+    - { kind: keep,   text: "CI 自动化净室检查+依赖方向检查，把 AGENTS.md 铁律变成强制门", source: "retro" }
+    - { kind: improve, text: "三端实际打包未验证（需 GUI 环境跑 tauri-action），列为 gap 待人工验证", source: "retro" }
+    - { kind: improve, text: "PDFium/Tesseract 原生库三端分发方案未落地（动态链接运行时缺库会报错），Phase 后续处理静态链接", source: "retro" }
+  patterns:
+    - "GitHub Actions 三端矩阵：os: [ubuntu/macos/windows]，Linux 需额外装 webkit2gtk 等系统依赖"
+    - "停用词过滤：Tokenizer 内置 HashSet 检查，Arc 共享不复制"

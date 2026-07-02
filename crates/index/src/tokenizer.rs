@@ -12,16 +12,29 @@ use tantivy::tokenizer::{Token, TokenStream, Tokenizer};
 ///
 /// 必须实现 Clone（tantivy Tokenizer trait 要求）。
 /// Jieba 内部用 Arc 共享词库数据，clone 廉价。
+/// 含停用词过滤（的、了、是等高频虚词），提升搜索精度。
 #[derive(Clone)]
 pub struct JiebaTokenizer {
     /// 用 Arc 共享，clone 不复制词库。
     jieba: std::sync::Arc<Jieba>,
+    /// 停用词集合（Arc 共享，clone 廉价）。
+    stop_words: std::sync::Arc<std::collections::HashSet<&'static str>>,
 }
+
+/// 中文常见停用词（虚词/代词/量词等高频低信息量词）。
+const STOP_WORDS: &[&str] = &[
+    "的", "了", "是", "在", "和", "也", "都", "就", "你", "我", "他", "她", "它",
+    "这", "那", "有", "为", "以", "及", "或", "与", "但", "而", "所", "被", "把",
+    "给", "向", "从", "到", "对", "于", "由", "按", "根据", "通过", "一个", "一种",
+    "可以", "这个", "那个", "这些", "那些", "什么", "怎么", "哪里", "为什么",
+    "着", "过", "吧", "呢", "啊", "吗", "嗯", "哦", "的话",
+];
 
 impl Default for JiebaTokenizer {
     fn default() -> Self {
         Self {
             jieba: std::sync::Arc::new(Jieba::new()),
+            stop_words: std::sync::Arc::new(STOP_WORDS.iter().copied().collect()),
         }
     }
 }
@@ -39,11 +52,14 @@ impl Tokenizer for JiebaTokenizer {
         for (position, word) in segmented.into_iter().enumerate() {
             let word_trimmed = word.trim();
             if word_trimmed.is_empty() {
-                // 仍要推进 offset（空白的长度）
                 byte_offset += word.len();
                 continue;
             }
-            // 找到 word 在 text 中从 byte_offset 开始的位置
+            // 停用词过滤（的、了、是等高频虚词）
+            if self.stop_words.contains(word_trimmed) {
+                byte_offset += word.len();
+                continue;
+            }
             let offset_from = byte_offset;
             let offset_to = byte_offset + word.len();
             byte_offset = offset_to;
@@ -123,5 +139,21 @@ mod tests {
             "应包含 'react'，实际: {:?}",
             words
         );
+    }
+
+    #[test]
+    fn jieba_filters_stop_words() {
+        let mut tokenizer = JiebaTokenizer::default();
+        let mut stream = tokenizer.token_stream("我的公司是一个好公司");
+        let mut words = Vec::new();
+        while stream.advance() {
+            words.push(stream.token().text.clone());
+        }
+        // 停用词"的""是""一个"应被过滤
+        assert!(!words.contains(&"的".to_string()), "的应被过滤");
+        assert!(!words.contains(&"是".to_string()), "是应被过滤");
+        assert!(!words.contains(&"一个".to_string()), "一个应被过滤");
+        // 实义词保留
+        assert!(words.contains(&"公司".to_string()), "公司应保留");
     }
 }

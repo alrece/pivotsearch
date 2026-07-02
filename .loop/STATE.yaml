@@ -1,7 +1,7 @@
 version: 1
 project: pivotsearch
-current_phase: 5            # Phase 4 UI 骨架完成，进入 Phase 5 打磨与发布
-current_step: execute       # Phase 5：打包 CI + 文档 + 中文调优
+current_phase: 5  # Phase 5 收尾完成（CI+文档+调优），全 5 Phase 闭环 DONE
+current_step: complete    # 全部 Phase 完成，进入 retro 阶段
 iteration: 1                # 第几轮宏观循环
 started_at: 2026-07-02T12:00:00Z
 mode: interactive           # interactive（遇决策点停）| auto（全自动不停）

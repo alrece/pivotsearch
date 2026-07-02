@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── 后端：测试 + 净室检查 ──
+  backend-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 安装系统依赖（Linux）
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+      - name: 编译检查
+        run: cargo check --workspace
+      - name: 运行测试
+        run: cargo test --workspace
+      - name: 净室合规检查
+        run: |
+          if grep -ri "docfetcher\|net.sourceforge.docfetcher" crates/ src/ src-tauri/src/ 2>/dev/null | grep -v "target/"; then
+            echo "❌ FAIL: 发现 DocFetcher 标识符残留"
+            exit 1
+          else
+            echo "✅ PASS: 净室合规"
+          fi
+      - name: 依赖方向检查
+        run: |
+          if grep -E "pivotsearch-(parser|index|watcher|queue|search|ocr)" crates/core/src/*.rs crates/core/Cargo.toml 2>/dev/null; then
+            echo "❌ FAIL: core 违反依赖方向铁律"
+            exit 1
+          else
+            echo "✅ PASS: 依赖方向"
+          fi
+
+  # ── 前端：构建检查 ──
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  # ── Tauri 后端：src-tauri 编译（三端）──
+  tauri-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: 安装 Linux Tauri 依赖
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: pnpm install --frozen-lockfile
+      - name: src-tauri 编译检查
+        working-directory: src-tauri
+        run: cargo check

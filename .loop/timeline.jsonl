@@ -21,3 +21,6 @@
 {"ts":"2026-07-02T18:50:00Z","phase":4,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 4 T9 done: OCR feature gate 骨架（默认禁用）"}
 {"ts":"2026-07-02T18:50:00Z","phase":4,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 4 DONE: 对抗门全过(workspace+src-tauri+前端编译/39测试/净室/依赖方向)。覆盖率 85%->92%。next_seed=Phase 5 打包+文档"}
 {"ts":"2026-07-02T18:50:00Z","phase":5,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 5 打磨与发布开始"}
+{"ts":"2026-07-02T19:10:00Z","phase":5,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 5 T12 done: GitHub Actions CI(三端矩阵)+Release workflow(4 target)"}
+{"ts":"2026-07-02T19:10:00Z","phase":5,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 5 T13 done: 中文停用词过滤 + README 完善支持格式表"}
+{"ts":"2026-07-02T19:10:00Z","phase":5,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 5 DONE + 全 5 Phase 闭环完成: workspace+src-tauri+前端编译/34测试/净室/依赖方向 全过. 覆盖率 92%->95%. pivotsearch v0.1 后端核心引擎+桌面UI骨架就绪"}
