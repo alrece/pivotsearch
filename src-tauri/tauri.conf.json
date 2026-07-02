@@ -8,7 +8,7 @@
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
-    "beforeBundleCommand": "scripts/prepare-sidecar.sh"
+    "beforeBundleCommand": "node scripts/prepare-sidecar.mjs"
   },
   "app": {
     "windows": [

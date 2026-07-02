@@ -83,22 +83,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - run: pnpm install --frozen-lockfile
-      # 编译 psearch sidecar（Tauri check 需要 sidecar 文件存在）
-      - name: 编译 psearch sidecar (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cargo build --release -p psearch
-          mkdir -p src-tauri/binaries
-          TARGET=$(rustc -vV | sed -n 's/host: //p')
-          cp "target/release/psearch" "src-tauri/binaries/psearch-${TARGET}"
-      - name: 编译 psearch sidecar (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          cargo build --release -p psearch
-          mkdir -p src-tauri/binaries
-          TARGET=$(rustc -vV | sed -n 's/host: //p')
-          cp "target/release/psearch.exe" "src-tauri/binaries/psearch-${TARGET}.exe"
+      # 编译 psearch sidecar（跨平台 node 脚本，Tauri check 需要 sidecar 文件存在）
+      - name: 编译 psearch sidecar
+        run: node scripts/prepare-sidecar.mjs
       - name: src-tauri 编译检查
         working-directory: src-tauri
         run: cargo check
