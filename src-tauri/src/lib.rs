@@ -387,6 +387,54 @@ async fn rebuild_index(
     Ok(())
 }
 
+/// 复制文本到系统剪贴板。
+#[tauri::command]
+async fn copy_to_clipboard(
+    text: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard()
+        .write_text(&text)
+        .map_err(|e| e.to_string())
+}
+
+/// 在系统文件管理器中打开文件所在目录（高亮该文件）。
+#[tauri::command]
+async fn open_in_folder(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err("文件不存在".to_string());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: open -R <path> 在 Finder 中高亮文件
+        std::process::Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: explorer /select,<path>
+        std::process::Command::new("explorer")
+            .args(["/select,", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: 打开文件所在目录
+        let dir = p.parent().unwrap_or(p).to_string_lossy().to_string();
+        std::process::Command::new("xdg-open")
+            .arg(&dir)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 // ── 辅助函数 ──
 
 fn md5_hash(s: &str) -> u64 {
@@ -409,6 +457,8 @@ fn now_millis() -> i64 {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(Arc::new(Mutex::new(EngineState::new())))
         .setup(|app| {
             // 启动时从磁盘恢复已有索引到 state
@@ -437,6 +487,8 @@ pub fn run() {
             list_indexes,
             remove_index,
             rebuild_index,
+            copy_to_clipboard,
+            open_in_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

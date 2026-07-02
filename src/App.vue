@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ElMessage } from "element-plus";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   search as searchApi,
@@ -9,6 +10,8 @@ import {
   getPreview,
   rebuildIndex,
   onIndexProgress,
+  copyToClipboard,
+  openInFolder,
   type SearchResult,
   type IndexInfo,
   type IndexProgress,
@@ -156,6 +159,24 @@ function renderSnippet(snippet: string): string {
 }
 
 // ═══ 格式化 ═══
+// ═══ 文件操作按钮 ═══
+async function onCopyPath(path: string) {
+  try {
+    await copyToClipboard(path);
+    ElMessage.success("路径已复制");
+  } catch (e) {
+    ElMessage.error("复制失败");
+  }
+}
+
+async function onOpenFolder(path: string) {
+  try {
+    await openInFolder(path);
+  } catch (e) {
+    ElMessage.error("打开目录失败");
+  }
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -364,6 +385,10 @@ onUnmounted(() => {
               <span>{{ formatDate(r.last_modified) }}</span>
               <span class="meta-sep">·</span>
               <span class="meta-parser">{{ r.parser }}</span>
+              <span class="meta-actions">
+                <button class="meta-btn" title="复制路径" @click.stop="onCopyPath(r.path)">📋</button>
+                <button class="meta-btn" title="打开所在目录" @click.stop="onOpenFolder(r.path)">📂</button>
+              </span>
             </div>
           </div>
         </div>
@@ -683,6 +708,28 @@ body {
   background: #f0f2f5;
   padding: 0 4px;
   border-radius: 2px;
+}
+
+.meta-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.meta-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 3px;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.1s, background 0.1s;
+}
+
+.meta-btn:hover {
+  opacity: 1;
+  background: #e8e8e8;
 }
 
 /* 右：预览面板 */

@@ -93,3 +93,13 @@ export function onIndexProgress(
     callback(event.payload);
   });
 }
+
+// ── 文件操作 ──
+
+export async function copyToClipboard(text: string): Promise<void> {
+  return invoke<void>("copy_to_clipboard", { text });
+}
+
+export async function openInFolder(path: string): Promise<void> {
+  return invoke<void>("open_in_folder", { path });
+}
