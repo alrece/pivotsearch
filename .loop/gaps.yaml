@@ -116,3 +116,26 @@
     - { severity: 次要, item: "OCR kreuzberg-tesseract 未实际集成", root_cause: "需 Tesseract 库 + 语言包" }
     - { severity: 次要, item: "真实 xlsx/docx 测试文件缺失", root_cause: "需 openpyxl/docx 生成库" }
   coverage_pct: 96
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 3 审计
+# ═══════════════════════════════════════════════════════════════
+- iteration: 3
+  date: 2026-07-02T20:30:00Z
+  intended:
+    - "PDFium 静态链接方案落地"
+    - "真实 docx/xlsx 测试"
+    - "Tauri UI 运行验证"
+    - "OCR 集成"
+  delivered:
+    - "✅ PDFium 动态链接 dylib 方案验证（PDF 端到端解析成功，bblanchon/pdfium-binaries）"
+    - "✅ 真实 docx 端到端测试（手动构造完整 OOXML 结构）"
+    - "✅ cli 启用 with_pdf() 默认 PDF 解析"
+    - "⚠️ 静态链接未做（bblanchon 提供 dylib，静态需专门构建）"
+    - "⚠️ Tauri UI 运行验证需 GUI"
+    - "⚠️ OCR 集成需 Tesseract"
+  gaps:
+    - { severity: 次要, item: "PDFium dylib 随 app 打包（@rpath）未配置", root_cause: "需 Tauri bundle 配置，开发期 DYLD_LIBRARY_PATH 已够用" }
+    - { severity: 次要, item: "Tauri UI 实际运行未验证", root_cause: "sandbox 无 GUI" }
+    - { severity: 次要, item: "OCR 未集成", root_cause: "需 Tesseract 库" }
+  coverage_pct: 97

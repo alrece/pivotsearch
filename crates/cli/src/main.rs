@@ -90,7 +90,8 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
     let mut writer = index.writer(50_000_000)?; // 50MB
 
     // 构造 parser 注册表（含 PDF，若 PDFium 可用）
-    let registry = ParserRegistryImpl::with_builtin_parsers();
+    // 启用 PDF parser（需 PDFium 库，缺库时 PdfParser.parse 返回错误不阻塞）
+    let registry = ParserRegistryImpl::with_builtin_parsers().with_pdf();
 
     // 遍历目录
     let mut total = 0usize;

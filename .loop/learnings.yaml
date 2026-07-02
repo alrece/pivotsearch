@@ -224,3 +224,25 @@
     - "snippet 修复模式：新增 stored snippet_text 字段（content 前 N 字符）+ 手动 query 词高亮，绕过 SnippetGenerator 跨字段限制"
     - "端到端调试：用完整输出而非 grep 片段，避免换行/截断误判"
     - "性能基线脚本：bash 生成 N 文件 + python3 time 计时，测索引吞吐和查询延迟"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 3 — PDFium 验证 + 真实 docx 测试
+# ═══════════════════════════════════════════════════════════════
+- iteration: 3
+  date: 2026-07-02T20:30:00Z
+  milestone: "PDFium 动态链接 dylib 方案验证成功（PDF 端到端解析）+ 真实 docx 端到端测试通过"
+  decisions:
+    - "PDFium 用动态链接 dylib 方案（bblanchon/pdfium-binaries 提供 dylib 而非 .a），通过 DYLD_LIBRARY_PATH 加载，PDF 解析端到端成功"
+    - "cli index 命令启用 with_pdf()（之前只 with_builtin_parsers 导致 PDF 被跳过）"
+    - "真实 docx 用 Python zip+xml 手动构造最小有效 docx（docx-rs read_docx 要求完整结构：Content_Types + rels + document.xml.rels + document.xml + styles.xml）"
+  lessons:
+    - { kind: keep,   text: "PDF 端到端验证通过：含英文文本的 PDF 被 PdfParser 正确提取并索引，搜 Revenue 命中 test.pdf", source: "retro" }
+    - { kind: keep,   text: "docx 端到端验证通过：手动构造的 docx 被 DocxParser 正确解析，搜营收命中 + snippet 高亮", source: "retro" }
+    - { kind: keep,   text: "bblanchon/pdfium-binaries 是可靠的 PDFium 预编译源（GitHub 可访问，3.4MB macOS arm64 包含 dylib+头文件+许可证）", source: "retro" }
+    - { kind: improve, text: "cli index 默认没启用 with_pdf 导致 PDF 被跳过——PDF parser 应默认启用，缺库时优雅降级（PdfParser.pdfium=None → parse 返回错误不阻塞）", source: "retro" }
+    - { kind: improve, text: "docx-rs read_docx 对 docx 结构有严格要求，缺 word/_rels/document.xml.rels 会 ZipError(FileNotFound)——构造测试 docx 需补全完整 OOXML 结构", source: "retro" }
+    - { kind: try,    text: "Iteration 4: Tauri UI 运行验证（需 GUI 环境）+ PDFium dylib 随 app 打包（@rpath 配置）", source: "retro" }
+  patterns:
+    - "PDFium 分发：bblanchon/pdfium-binaries 下载 dylib + DYLD_LIBRARY_PATH（开发）/ @rpath（打包），三端各有对应包"
+    - "OOXML 测试文件构造：Python zipfile 写 5 个必需部件（Content_Types + _rels/.rels + word/_rels/document.xml.rels + word/document.xml + word/styles.xml）"
+    - "PDF parser 默认启用 + 优雅降级：PdfParser.pdfium=None 时 parse 返回错误但不 panic，其他格式不受影响"
