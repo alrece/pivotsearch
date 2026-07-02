@@ -77,7 +77,14 @@ async fn add_index(
     let (schema, fields, _tokenizer_manager) = build_schema();
     let tantivy_dir = index_dir.join("tantivy");
     std::fs::create_dir_all(&tantivy_dir).map_err(|e| e.to_string())?;
-    let index = Index::create_in_dir(&tantivy_dir, schema).map_err(|e| e.to_string())?;
+
+    // open-or-create：如果索引已存在（重启后再添加同一路径），open 而非 create
+    let tantivy_meta = tantivy_dir.join("meta.json");
+    let index = if tantivy_meta.exists() {
+        Index::open_in_dir(&tantivy_dir).map_err(|e| e.to_string())?
+    } else {
+        Index::create_in_dir(&tantivy_dir, schema).map_err(|e| e.to_string())?
+    };
     index.tokenizers().register(
         pivotsearch_index::JIEBA_TOKENIZER_NAME,
         tantivy::tokenizer::TextAnalyzer::from(pivotsearch_index::tokenizer::JiebaTokenizer::default()),
@@ -85,6 +92,7 @@ async fn add_index(
 
     let tree_index_path = index_dir.join("tree_index.sqlite");
     let tree_index = TreeIndex::open(&tree_index_path).map_err(|e| e.to_string())?;
+    // add_index_root 用 INSERT OR IGNORE，重复添加同一路径不会报错
     tree_index
         .add_index_root(&index_id, &path, display_name.as_deref(), now_millis())
         .map_err(|e| e.to_string())?;
@@ -402,6 +410,26 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(Mutex::new(EngineState::new())))
+        .setup(|app| {
+            // 启动时从磁盘恢复已有索引到 state
+            let state = app.state::<Arc<Mutex<EngineState>>>();
+            if let Ok(data_dir) = app.path().app_data_dir() {
+                let indexes_dir = data_dir.join("indexes");
+                if indexes_dir.exists() {
+                    let mut s = state.lock();
+                    for entry in std::fs::read_dir(&indexes_dir).into_iter().flatten() {
+                        if let Ok(e) = entry {
+                            let dir_name = e.file_name().to_string_lossy().to_string();
+                            if dir_name.starts_with("idx-") {
+                                s.index_dirs.insert(dir_name, e.path());
+                            }
+                        }
+                    }
+                    tracing::info!("恢复 {} 个已有索引", s.index_dirs.len());
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             add_index,
             search,
