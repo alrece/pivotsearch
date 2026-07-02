@@ -1,0 +1,103 @@
+version: 1
+project: pivotsearch
+current_phase: 1            # Phase 0 脚手架完成，进入 Phase 1 核心索引闭环
+current_step: execute       # Phase 1 起：execute（实现 T1-T3 核心闭环）
+iteration: 1                # 第几轮宏观循环
+started_at: 2026-07-02T12:00:00Z
+mode: interactive           # interactive（遇决策点停）| auto（全自动不停）
+
+# 参考项目（设计逻辑蓝本，非代码复制——遵守净室红线）
+reference_target: /Users/alrece/Github/DocFetcher
+reference_path: /Users/alrece/Github/DocFetcher
+reference_type: local       # git | local | url
+
+# 工程方法论参考（同款 .loop / openspec / .planning 框架，跨语言复用）
+methodology_reference: /Users/alrece/GitHub/cloudpivot
+
+phase_map:
+  1: 构想（ideate）
+  2: 设计（design：规格 + 审核）
+  3: 实施（build：plan → execute）
+  4: 质量保证（qa：审查 + 验收）
+  5: 发布（ship）
+  6: 迭代（iterate：里程碑归档 + retro）
+  7: 项目管理（manage：横切工具，不强制经过）
+
+step_map:
+  # ideate / spec / design / plan / execute / review / qa / verify / ship / retro
+  ideate, spec, design, plan, execute, review, qa, verify, ship, retro
+
+phase_status:
+  0: { status: done,      step: scaffold, blockers: [], artifacts: ["AGENTS.md", "CLAUDE.md", "README.md", "DESIGN.md", "Makefile", "Cargo.toml", "crates/", ".loop/", "openspec/", ".planning/", "docs/"] }
+  1: { status: active,    step: execute,  blockers: [], artifacts: ["crates/"] }
+  2: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  3: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  4: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  5: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  6: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  7: { status: pending,   step: null,     blockers: [], artifacts: [] }
+
+artifacts:
+  # 跨工具产物追踪（相对项目根的路径）
+  ideate: .loop/ideation.md
+  spec: openspec/changes/pivotsearch-v1-local-search/
+  design: docs/
+  planning: .planning/
+  execute: crates/
+  review: .loop/reviews.md
+  qa: .loop/qa-report.md
+  ship: .loop/ship-log.md
+  retro: .loop/learnings.yaml
+
+# 资产文件指针
+learnings: .loop/learnings.yaml
+gaps: .loop/gaps.yaml
+
+# 数据源优先级（从上至下严格执行，冲突时高优先级优先）
+data_source_priority:
+  L1: docs/                          # 已敲定的技术选型、架构决策
+  L2: AGENTS.md                      # 约束目录结构、命名、净室红线、开发约定
+  L3: /Users/alrece/Github/DocFetcher  # 设计逻辑蓝本（只复刻设计，禁止复制代码）
+  L4: 网络调研                        # crate 选型、Tantivy/Tauri API、格式解析方案
+
+# 强制约束（本轮硬约束）
+hard_constraints:
+  - 净室红线：禁止复制 DocFetcher 的 Java 源码/类名/标识符，只复刻设计逻辑（mtime 增量、unseenDocs diff、Parser 注册表等公共模式）
+  - 依赖方向铁律：core 编排层只依赖 contracts trait，绝不 import 具体实现；只有 cli/src-tauri 能 import 具体实现
+  - Tantivy 单 writer 强约束：同一索引目录同时只能一个 writer，单工作线程模型不可改为多 worker 并发写同索引
+  - 三端优先：所有原生依赖（PDFium/Tesseract）必须 Windows/macOS/Linux 三端可打包
+  - 中文输出：面向用户的所有说明用简体中文
+
+# 受控原生依赖（技术现实，已在计划中向用户确认）
+controlled_native_deps:
+  - PDFium（pdfium-render 静态链接）：保证中文 PDF 解析质量，纯 Rust 对 CID 字体乱码
+  - Tesseract（kreuzberg-tesseract 内置静态编译，feature gate 可选）：OCR 无纯 Rust 替代品，语言包按需下载
+  - 老格式 .doc/.ppt：v1 不支持，检测到时 UI 提示转换为 .docx/.pptx
+
+# 约束消解（已与用户确认）
+resolved_constraints:
+  pure_rust_interpretation:
+    question: 用户决策"B 路线纯 Rust 原生解析一次到位"，但 PDF 中文/OCR/老 Office 三处纯 Rust 不可行
+    answer: >
+      以纯 Rust 为绝对主体（95% 代码库），对三处受控引入原生依赖：
+      PDFium 静态链接（C++）、Tesseract 可选静态编译（C++，语言包按需下载）。
+      老格式 .doc/.ppt v1 不支持并明确提示转换。用户已在 ExitPlanMode 审批中接受。
+    effective: 全程适用
+
+# 8 个 Capability（v1 范围）
+capabilities:
+  - core-index-schema        # Tantivy schema + uid + Document 组装
+  - parser-registry          # Parser 注册表 + 两级选择 + 各格式解析器
+  - incremental-index        # mtime 比对 + 文件树 diff + SQLite 元数据持久化
+  - file-watcher             # notify + 防抖 + 事件过滤 + mtime 校验
+  - indexing-queue           # 单工作线程 + Task 状态机 + 多索引并发
+  - search-engine            # 多索引合并 + 查询解析 + 分页 + 高亮
+  - ocr-pipeline             # Tesseract 集成 + 图片/扫描件识别（feature gate）
+  - desktop-ui               # Tauri 2 前端 + 即时搜索 + 预览 + 索引管理
+
+history:                     # 每轮 retro 后追加
+  - iteration: 1
+    phase_completed: 0
+    completed: 2026-07-02T12:45:00Z
+    retro_summary: "pivotsearch Phase 0 脚手架完成——全套方法论框架（.loop/openspec/.planning/AGENTS.md）+ 9 crate workspace 编译通过 + 8 个 capability spec 完整。净室零残留，依赖方向铁律验证通过。覆盖率 30%（无业务逻辑/Tauri/测试/打包）。"
+    next_seed: "Phase 1: (1) T1 contracts 完整 trait + index Tantivy schema(8字段+uid+Document 组装) (2) T2 parser MVP(txt/md/html/pdf/docx/xlsx + 注册表两级选择，含 pdfium-render 静态链接 PoC) (3) T3 search 单索引查询+高亮+分页 + cli index/search 命令闭环"

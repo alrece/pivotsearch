@@ -1,0 +1,18 @@
+[package]
+name = "pivotsearch-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch CLI（开发期调试用）"
+
+[[bin]]
+name = "pivotsearch"
+path = "src/main.rs"
+
+[dependencies]
+# cli 是组装根，可 import 全部具体实现
+pivotsearch-contracts = { workspace = true }
+pivotsearch-core      = { workspace = true }
+# Phase 1 起按需引入 parser/index/search 的具体实现
+anyhow = { workspace = true }

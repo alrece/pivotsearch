@@ -1,0 +1,31 @@
+# Loop Engineering — learnings（复盘教训）
+# 每轮宏观循环 retro 后追加。
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 0 — 工程脚手架建立
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T12:45:00Z
+  milestone: "pivotsearch Phase 0 脚手架——全套方法论框架 + 9 crate workspace 编译通过"
+  decisions:
+    - "技术栈定稿：Rust + Tantivy 0.24 + Tauri 2，纯 Rust 主体 + 三处受控原生依赖（PDFium/Tesseract/老 Office 不支持），用户 ExitPlanMode 审批确认"
+    - "9 crate workspace 架构：contracts(依赖终点) + 6 能力 crate + core(编排) + cli(组装根)，复刻 cloudpivot 的依赖方向铁律"
+    - "元数据用 SQLite 替代 DocFetcher 的 Java 序列化（跨版本脆弱 + StackOverflow 风险）"
+    - "高亮用 Tantivy SnippetGenerator 单路径替代 Lucene FastVector/标准双高亮（Tantivy 无 term-vector offset）"
+    - "中文分词用 jieba-rs 自写 Tokenizer，不依赖 tantivy-jieba（版本滞后跟踪 tantivy 0.20）"
+  lessons:
+    - { kind: keep,   text: "复刻 cloudpivot 工程方法论框架（.loop/openspec/.planning/AGENTS.md）跨语言复用成功，结构完整可审计", source: "retro" }
+    - { kind: keep,   text: "8 个 capability spec 用 Requirement + WHEN/THEN Scenario 格式，可直接映射 Phase 1-5 测试用例", source: "retro" }
+    - { kind: keep,   text: "净室红线从一开始就写入 AGENTS.md 并配 grep 检查脚本（make cleanroom），零 DocFetcher 代码残留", source: "retro" }
+    - { kind: keep,   text: "依赖方向铁律通过编译期验证：core 的 Cargo.toml 只声明 pivotsearch-contracts，Makefile 加 deps-check 守护", source: "retro" }
+    - { kind: keep,   text: "三处受控原生依赖（PDFium/Tesseract/老 Office）在计划阶段就向用户诚实反馈并获得确认，避免后期返工", source: "retro" }
+    - { kind: improve, text: "contracts/lib.rs 的 re-export 首次漏了 WatchEventKind/PreviewData/PAGE_SIZE，导致 watcher/search crate 编译失败——新建模块时应同步更新 lib.rs 的 pub use", source: "retro" }
+    - { kind: improve, text: "ocr crate 的 feature gate 设计在 Phase 0 只是空壳，Phase 4 引入 kreuzberg-tesseract 时需验证 --features orc 编译路径", source: "retro" }
+    - { kind: try,    text: "Phase 1 优先实现 contracts 完整 trait + index schema（T1），再接 parser MVP（T2），最后 cli 闭环（T3）", source: "retro" }
+    - { kind: try,    text: "Phase 1 引入 pdfium-render 时先做 PDFium 静态链接的 PoC（三端二进制获取），这是最大技术风险点", source: "retro" }
+    - { kind: try,    text: "Tauri 项目骨架（src-tauri/ + Vue 前端）留到 Phase 4 再初始化，Phase 1-3 用 CLI 验证后端闭环即可", source: "retro" }
+  patterns:
+    - "跨语言方法论复用：cloudpivot 的 .loop/openspec/.planning 框架结构原样复用到 Rust 项目，只改技术栈描述"
+    - "诚实可行性反馈：计划阶段就把纯 Rust 路线的三处硬伤（PDF中文/OCR/老Office）告诉用户并给出方案，获确认后再动手"
+    - "依赖方向编译期守护：core crate 的 Cargo.toml 只声明 contracts，配合 make deps-check 自动验证"
+    - "净室 grep 自动化：make cleanroom 一键检查 DocFetcher 标识符零残留"

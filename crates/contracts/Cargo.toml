@@ -1,0 +1,12 @@
+[package]
+name = "pivotsearch-contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 契约层：trait + 数据结构 + 错误类型（依赖终点）"
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }

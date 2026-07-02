@@ -1,0 +1,30 @@
+# Loop Engineering — gaps（未决问题与缺口）
+# 运行中发现但本轮不解决、留给后续循环或人工决策的缺口。
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 0 — 差距审计
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T12:45:00Z
+  intended:
+    - "全套方法论框架（.loop/ openspec/ .planning/ AGENTS.md）"
+    - "9 crate Cargo workspace 骨架可编译"
+    - "8 个 capability spec 完整（Requirement + Scenario）"
+    - "Tauri 项目骨架"
+    - "三端打包 CI"
+  delivered:
+    - "✅ 全套方法论框架建立（STATE.yaml/timeline/decisions/learnings/gaps/ideation + openspec proposal+design+tasks+8spec + .planning PROJECT/ROADMAP/STATE）"
+    - "✅ 9 crate workspace 编译通过（cargo check 全过）"
+    - "✅ 8 个 capability spec 完整（每个含 3-7 个 Requirement + WHEN/THEN Scenario）"
+    - "✅ 顶层文件齐全（AGENTS/CLAUDE/README/LICENSE/.gitignore/DESIGN/Makefile/docs）"
+    - "✅ 净室检查零 DocFetcher 残留 + 依赖方向铁律验证通过"
+    - "✅ CLI 可运行（占位输出）"
+    - "⚠️ Tauri 项目骨架未初始化（src-tauri/ 和 src/ 为空，留到 Phase 4）"
+    - "⚠️ 三端打包 CI 未建立（留到 Phase 5）"
+  gaps:
+    - { severity: 次要, item: "Tauri 项目骨架（src-tauri/ + Vue 前端）未初始化", root_cause: "Phase 0 聚焦后端 workspace + 方法论框架；Tauri 前端依赖 Phase 1-3 后端闭环验证后再接入更合理" }
+    - { severity: 次要, item: "PDFium 静态链接三端方案未验证（最大技术风险点）", root_cause: "Phase 0 不引入重依赖，留到 Phase 1 T2 引入 pdfium-render 时做 PoC" }
+    - { severity: 次要, item: "crate 间实际依赖未跑通（Phase 0 全是占位 lib.rs）", root_cause: "Phase 0 目标是脚手架可编译，真实逻辑 Phase 1 起实现" }
+    - { severity: 次要, item: "无单元测试（占位 crate 无测试逻辑）", root_cause: "Phase 1 T1 起随实现补测试" }
+  coverage_pct: 30
+  # 30%：方法论框架 + 可编译骨架完成，但无业务逻辑实现、无 Tauri、无测试、无打包

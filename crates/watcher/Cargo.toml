@@ -1,0 +1,11 @@
+[package]
+name = "pivotsearch-watcher"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 监听层：notify + 防抖 + 事件过滤 + mtime 校验"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# Phase 2 起引入 notify/notify-debouncer-full

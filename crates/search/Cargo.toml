@@ -1,0 +1,11 @@
+[package]
+name = "pivotsearch-search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 查询层：多索引合并 + 查询解析 + 分页 + 高亮"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# Phase 1 起引入 tantivy

@@ -1,0 +1,11 @@
+[package]
+name = "pivotsearch-parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 解析层：Parser 注册表 + 各格式解析器"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# Phase 1 起逐步引入具体解析 crate（pdfium-render/calamine/pulldown-cmark 等）

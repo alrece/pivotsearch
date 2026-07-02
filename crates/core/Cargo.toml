@@ -1,0 +1,12 @@
+[package]
+name = "pivotsearch-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 编排层：PivotsearchEngine 总入口（只依赖 contracts）"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# 注意：core 只依赖 contracts trait，不依赖具体实现（依赖方向铁律）
+# 具体实现由 cli/src-tauri 组装根注入

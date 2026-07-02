@@ -1,0 +1,49 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock
+# 例外：workspace 根 Cargo.lock 入库（二进制项目），crate 级不需要
+
+# Node / 前端
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# 索引数据（开发期产生的本地索引，不入库）
+.indexes/
+*.tantivy/
+pivotsearch-index/
+*.sqlite
+*.sqlite-journal
+
+# OCR 语言包（按需下载，不入库）
+tessdata/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# 环境与密钥
+.env
+.env.local
+*.pem
+*.key
+
+# OS
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log
+
+# Loop Engineering 临时文件（保留 .loop/ 目录本身）
+.loop/*.tmp
+.loop/STATE.yaml.tmp

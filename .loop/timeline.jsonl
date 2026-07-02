@@ -1,0 +1,5 @@
+{"ts":"2026-07-02T12:00:00Z","phase":0,"step":"scaffold","event":"init","adversarial":"none","mode":"interactive","detail":"Loop Engineering initialized; project=pivotsearch; reference=DocFetcher(local, 设计逻辑蓝本); methodology_reference=cloudpivot; iteration=1"}
+{"ts":"2026-07-02T12:05:00Z","phase":1,"step":"ideate","event":"decision","adversarial":"none","mode":"interactive","detail":"技术栈定稿：Rust + Tantivy 0.24 + Tauri 2 + pdfium-render + kreuzberg-tesseract。纯 Rust 为主体，三处受控原生依赖（PDFium/Tesseract/老 Office 不支持）经用户 ExitPlanMode 审批确认"}
+{"ts":"2026-07-02T12:10:00Z","phase":0,"step":"scaffold","event":"progress","adversarial":"none","mode":"interactive","detail":"顶层文件创建：AGENTS.md(宪法) + CLAUDE.md + README.md + LICENSE(Apache-2.0) + .gitignore + DESIGN.md"}
+{"ts":"2026-07-02T12:45:00Z","phase":0,"step":"scaffold","event":"complete","adversarial":"pass","mode":"interactive","detail":"Phase 0 DONE: 全套方法论框架 + 9 crate workspace 编译通过 + 8 spec 完整。净室 grep PASS，依赖方向 PASS。覆盖率 30%。"}
+{"ts":"2026-07-02T12:45:00Z","phase":1,"step":"execute","event":"advance","adversarial":"none","mode":"interactive","detail":"Phase 1 核心索引闭环开始：T1 contracts+schema → T2 parser MVP → T3 查询+CLI 闭环"}

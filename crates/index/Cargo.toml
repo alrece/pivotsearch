@@ -1,0 +1,11 @@
+[package]
+name = "pivotsearch-index"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 索引层：Tantivy schema + Document 组装 + 增量 + tree_index"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# Phase 1 起引入 tantivy/rusqlite/walkdir

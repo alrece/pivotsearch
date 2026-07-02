@@ -1,0 +1,11 @@
+[package]
+name = "pivotsearch-queue"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "pivotsearch 队列层：单工作线程 + Task 状态机 + 多索引并发"
+
+[dependencies]
+pivotsearch-contracts = { workspace = true }
+# Phase 2 起引入 crossbeam-channel/parking_lot
