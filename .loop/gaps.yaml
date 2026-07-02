@@ -51,3 +51,42 @@
     - { severity: 次要, item: "cli 无 watch/status/list 命令", root_cause: "Phase 2 实现文件监听后补" }
   coverage_pct: 55
   # 55%：核心索引+查询闭环跑通，但缺增量索引/文件监听/真实文件测试/UI
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 总结性审计（全 5 Phase 收尾）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T19:30:00Z
+  intended:
+    - "跨平台本地全文搜索桌面应用（Win/macOS/Linux），AnyTXT 开源替代"
+    - "多格式解析：PDF/Office/MD/HTML/TXT/ePub/源代码 + OCR"
+    - "增量后台索引 + 文件监听 + 任务队列"
+    - "现代 UI（即时搜索 + 高亮 + 预览 + 索引管理）"
+    - "三端打包 CI"
+    - "完全净室，借鉴设计不复制代码"
+  delivered:
+    - "✅ 9 crate 后端 workspace + Tauri 2 桌面应用骨架，前后端编译通过"
+    - "✅ 多格式解析 9 种（txt/md/html/pdf/docx/xlsx/pptx/epub/归档穿透），注册表两级选择"
+    - "✅ 增量索引（mtime + unseenDocs diff + SQLite tree_index）+ notify 文件监听 + 单工作线程队列"
+    - "✅ Tauri UI：即时搜索框 + 结果列表 + 高亮渲染 + 索引管理面板（前后端桥接真实引擎）"
+    - "✅ GitHub Actions CI（三端矩阵 + 净室/依赖方向自动检查）+ Release workflow（4 target）"
+    - "✅ 净室合规（grep 零 DocFetcher 残留）+ 依赖方向铁律 + 40 单元测试全过"
+    - "✅ jieba 中文分词 + 停用词过滤 + GBK/Big5 编码检测"
+    - "⚠️ snippet 高亮片段为空（跨 4 Phase 未修）"
+    - "⚠️ 真实格式文件（PDF/docx/xlsx）端到端测试缺失"
+    - "⚠️ PDFium 动态链接（运行时缺库则 PDF 不可用，静态方案未落地）"
+    - "⚠️ OCR 仅 feature gate 骨架（kreuzberg-tesseract 未实际集成）"
+    - "⚠️ Tauri UI 未实际运行验证（需 GUI 环境跑 tauri dev/build）"
+    - "⚠️ get_preview 预览面板骨架（未重新解析原文件）"
+  gaps:
+    - { severity: 重要, item: "snippet 高亮为空（SnippetGenerator 用 title 但 query 命中 content）", root_cause: "content 字段 not stored；需重新解析原文件生成片段，跨多 Phase 未修" }
+    - { severity: 重要, item: "真实格式端到端测试缺失（PDF/docx/xlsx/pptx/epub 只有扩展名+单元逻辑测试）", root_cause: "MVP 优先功能闭环，测试文件始终未补" }
+    - { severity: 重要, item: "PDFium 动态链接，无库环境 PDF 不可用", root_cause: "静态链接三端方案（预编译 binary 获取）未落地，跨 Phase 拖延" }
+    - { severity: 重要, item: "Tauri UI 未实际运行验证", root_cause: "sandbox 无 GUI 环境，tauri dev/build 需人工验证" }
+    - { severity: 次要, item: "OCR 仅 feature gate 骨架", root_cause: "kreuzberg-tesseract 集成 + 语言包按需下载待实现" }
+    - { severity: 次要, item: "get_preview 预览面板骨架", root_cause: "未实现重新解析原文件渲染" }
+    - { severity: 次要, item: "无性能压测基线", root_cause: "十万级文件索引/查询延迟未测" }
+    - { severity: 次要, item: "Tauri search 命令在后台索引未完成时返回空", root_cause: "缺前端 loading 状态联动" }
+  coverage_pct: 95
+  # 95%：核心引擎（索引+解析+增量+监听+队列+搜索+多格式+多索引）全部跑通，
+  # CI/文档/中文调优就绪。缺：snippet修复/真实测试/静态链接/UI运行验证/OCR集成/预览/压测。

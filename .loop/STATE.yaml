@@ -1,8 +1,8 @@
 version: 1
 project: pivotsearch
-current_phase: 5  # Phase 5 收尾完成（CI+文档+调优），全 5 Phase 闭环 DONE
-current_step: complete    # 全部 Phase 完成，进入 retro 阶段
-iteration: 1                # 第几轮宏观循环
+current_phase: 1  # Iteration 1 全 5 Phase 闭环完成（tag v0.1.0-alpha），retro 后进入 iteration 2
+current_step: ideate  # iteration 2 起点：ideate（等待用户确认启动）
+iteration: 2          # 第 2 轮宏观循环（v0.1 正式版打磨）
 started_at: 2026-07-02T12:00:00Z
 mode: interactive           # interactive（遇决策点停）| auto（全自动不停）
 
@@ -33,7 +33,7 @@ phase_status:
   2: { status: done,      step: execute,  blockers: [], artifacts: ["crates/index/src/tree_index.rs", "crates/index/src/incremental.rs", "crates/watcher/", "crates/queue/"] }
   3: { status: done,      step: execute,  blockers: [], artifacts: ["crates/parser/src/epub.rs", "crates/parser/src/pptx.rs", "crates/parser/src/archive.rs", "crates/search/src/multi.rs"] }
   4: { status: done,      step: execute,  blockers: [], artifacts: ["src-tauri/", "src/", "package.json", "vite.config.ts", "index.html"] }
-  5: { status: active,    step: execute,  blockers: [], artifacts: [] }
+  5: { status: done,      step: complete, blockers: [], artifacts: [".github/workflows/ci.yml", ".github/workflows/release.yml", "crates/index/src/tokenizer.rs", "README.md"] }
   6: { status: pending,   step: null,     blockers: [], artifacts: [] }
   7: { status: pending,   step: null,     blockers: [], artifacts: [] }
 
@@ -106,3 +106,9 @@ history:                     # 每轮 retro 后追加
     completed: 2026-07-02T14:15:00Z
     retro_summary: "Phase 1 核心索引闭环跑通——CLI index/search 端到端验证（搜「营收」命中季度报告、搜「内存」命中 Rust 指南、搜「React」命中混排文档）。16 测试全过（index 7 + parser 9），对抗门 4 项通过（编译/测试/净室/依赖方向）。覆盖 GBK/UTF-8 编码 + jieba 中文分词 + 6 格式解析 + Tantivy schema。覆盖率 55%。"
     next_seed: "Phase 2: (1) T4 增量索引(mtime 比对 + unseenDocs diff + SQLite tree_index) (2) T5 文件监听(notify + 防抖 + 事件过滤 + mtime 校验) (3) T6 任务队列(单工作线程 + Task 状态机 + 多索引并发) (4) 补真实 PDF/docx/xlsx 测试文件 (5) 修复 snippet 高亮从 content 重建"
+  - iteration: 1
+    phase_completed: 5
+    completed: 2026-07-02T19:30:00Z
+    retro_summary: "pivotsearch v0.1.0-alpha 全 5 Phase 闭环完成。从调研→计划→脚手架→核心索引→增量监听→全格式→桌面UI→CI，40 测试全过，覆盖率 95%。净室合规，依赖方向铁律守护。tag v0.1.0-alpha。"
+    iteration_summary: "第 1 轮宏观循环：用户提'反推 AnyTXT'→诚实纠正为开源组件栈重做→ExitPlanMode 审批→5 Phase 渐进执行（每 Phase 逐 plan + 对抗门）→v0.1.0-alpha。核心引擎（9 格式解析+增量索引+文件监听+队列+搜索+多索引）+ Tauri UI 骨架 + CI 全部就绪。"
+    next_seed: "Iteration 2（v0.1 正式版打磨）: (1) 修复 snippet 高亮从 content 重建（重新解析原文件生成片段） (2) 补真实 PDF/docx/xlsx/pptx/epub 测试文件，端到端验证各格式 (3) PDFium 静态链接方案落地（三端预编译 binary） (4) Tauri UI 实际运行验证 + 预览面板完整实现 (5) OCR kreuzberg-tesseract 实际集成 + 语言包按需下载 (6) 性能压测（十万级文件）"
