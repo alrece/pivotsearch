@@ -189,6 +189,12 @@ function formatDate(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// ═══ 从路径提取带后缀的文件名 ═══
+function fileName(path: string): string {
+  const parts = path.replace(/\\/g, "/").split("/");
+  return parts[parts.length - 1] || path;
+}
+
 function fileIcon(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase();
   const icons: Record<string, string> = {
@@ -371,7 +377,7 @@ onUnmounted(() => {
           >
             <div class="result-item-header">
               <span class="file-icon">{{ fileIcon(r.path) }}</span>
-              <span class="file-title">{{ r.title }}</span>
+              <span class="file-title">{{ fileName(r.path) }}</span>
             </div>
             <div
               class="file-snippet"
