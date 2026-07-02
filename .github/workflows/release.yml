@@ -50,19 +50,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # 编译 psearch CLI sidecar（必须在 Tauri build 前完成）
-      - name: 编译 psearch CLI (Unix)
+      # 编译 psearch CLI sidecar
+      - name: 编译 psearch sidecar (Unix)
         if: matrix.os != 'windows-latest'
         run: |
           cargo build --release -p psearch
           mkdir -p src-tauri/binaries
           TARGET="${{ matrix.target }}"
-          EXT=""
-          cp "target/release/psearch" "src-tauri/binaries/psearch-${TARGET}${EXT}"
-          chmod +x "src-tauri/binaries/psearch-${TARGET}${EXT}"
-          echo "✅ sidecar: src-tauri/binaries/psearch-${TARGET}${EXT}"
+          cp "target/release/psearch" "src-tauri/binaries/psearch-${TARGET}"
+          chmod +x "src-tauri/binaries/psearch-${TARGET}"
 
-      - name: 编译 psearch CLI (Windows)
+      - name: 编译 psearch sidecar (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
@@ -70,16 +68,55 @@ jobs:
           mkdir -p src-tauri/binaries
           TARGET="${{ matrix.target }}"
           cp "target/release/psearch.exe" "src-tauri/binaries/psearch-${TARGET}.exe"
-          echo "✅ sidecar: src-tauri/binaries/psearch-${TARGET}.exe"
 
+      # 直接用 pnpm tauri build（用本地 lockfile 版本，避免 mismatch）
       - name: 构建桌面应用
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm tauri build --target ${{ matrix.target }}
+
+      # 上传产物
+      - name: 上传 macOS 产物
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "pivotsearch ${{ github.ref_name }}"
-          releaseBody: "跨平台本地全文搜索桌面应用 · 含 psearch CLI"
-          releaseDraft: true
+          name: pivotsearch-macos-arm64
+          path: |
+            src-tauri/target/*/release/bundle/dmg/*.dmg
+            src-tauri/target/*/release/bundle/macos/*.app
+
+      - name: 上传 Linux 产物
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pivotsearch-linux
+          path: |
+            src-tauri/target/*/release/bundle/deb/*.deb
+            src-tauri/target/*/release/bundle/appimage/*.AppImage
+
+      - name: 上传 Windows 产物
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pivotsearch-windows
+          path: |
+            src-tauri/target/*/release/bundle/msi/*.msi
+            src-tauri/target/*/release/bundle/nsis/*.exe
+
+  # 创建 GitHub Release（所有产物上传后）
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "pivotsearch ${{ github.ref_name }}"
+          body: "跨平台本地全文搜索桌面应用 · 含 psearch CLI"
+          draft: false
           prerelease: false
-          args: --target ${{ matrix.target }}
+          files: artifacts/**
