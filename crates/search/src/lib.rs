@@ -1,7 +1,11 @@
 //! # pivotsearch-search
 //!
 //! 查询层：单索引查询 + 高亮 + 分页（Phase 1）。
-//! 多索引合并见 Phase 3。
+//! 多索引合并见 multi.rs（Phase 3）。
+
+pub mod multi;
+
+pub use multi::MultiIndexSearcher;
 
 use pivotsearch_contracts::{
     PivotsearchError, Result, SearchRequest, SearchResponse, SearchResult,

@@ -92,3 +92,31 @@
     - "类型别名 &String 参数应改 &str：pub type X=String 后 fn f(&X) 不接受 &str，改 fn f(&str) 更通用"
     - "notify-debouncer-full 防抖：1s 窗口 + 事件过滤，watch_with_callback 模式把过滤后事件发 callback"
     - "queue TaskHandler trait 解耦：queue 不依赖 index，由组装根注入闭包/实现"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 3 — 解析补全 + 多索引合并
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T15:45:00Z
+  milestone: "Phase 3 全格式补全 + 多索引合并——epub/pptx/归档穿透就绪，33 测试全过"
+  decisions:
+    - "epub/pptx 用 zip+XML 手动实现而非依赖重型 crate（epub crate 没下载成功，ooxmlsdk 要求 rust 1.88），更轻量可控"
+    - "pptx 提取 slide XML 的 <a:t> 标签文本（OOXML 文本运行），按 slide 序号排序"
+    - "归档穿透用 tempfile 解包到临时目录后递归调用 registry.parse，合并所有内部文件文本"
+    - "is_archive 用文件名后缀检测（处理双扩展名 .tar.gz），而非 Path::extension（只返回最后一段）"
+    - "strip_html_tags 用 remove_blocks 先去 script/style 块再去标签（首次实现状态机逻辑有 bug，改用显式块移除）"
+    - "MultiIndexSearcher 持有 Vec<(index_id, SimpleSearcher)>，每索引独立查询 top-N 合并，单索引损坏跳过不致命"
+  lessons:
+    - { kind: keep,   text: "归档穿透端到端验证通过：zip 内部 inner.txt 内容被索引并搜索命中", source: "retro" }
+    - { kind: keep,   text: "多格式端到端验证：txt/md/html/json/zip 全部正确解析和检索", source: "retro" }
+    - { kind: keep,   text: "epub/pptx 用 zip+XML 手动实现，避免重型 crate 依赖，减少编译时间和版本耦合", source: "retro" }
+    - { kind: improve, text: "strip_html_tags 首次用 in_tag/in_script 状态机逻辑有 bug（script 内容泄漏），改用 remove_blocks 显式块移除更可靠", source: "retro" }
+    - { kind: improve, text: "Path::extension 对 .tar.gz 只返回 gz，双扩展名需用 file_name() ends_with 检测", source: "retro" }
+    - { kind: improve, text: "tempfile 必须是正式依赖而非 dev-dependency（归档穿透运行时需要临时目录）", source: "retro" }
+    - { kind: try,    text: "Phase 4 OCR 管道（kreuzberg-tesseract feature gate）+ Tauri 桌面 UI", source: "retro" }
+    - { kind: try,    text: "Phase 4 修复 snippet 高亮从 content 重建（当前用 title 导致片段为空）", source: "retro" }
+  patterns:
+    - "OOXML 解析通用法：zip 解包 → 提取固定路径 XML（slide/docProps/core）→ 解析特定标签（<a:t>/<dc:title>）"
+    - "双扩展名检测：用 file_name().ends_with('.tar.gz') 而非 extension()（只返回最后一段）"
+    - "HTML 文本提取：remove_blocks(去script/style) + 扫标签，比状态机更不易错"
+    - "多索引合并：Vec<(id, Searcher)> 各查 top-N 合并，单索引失败跳过不致命"

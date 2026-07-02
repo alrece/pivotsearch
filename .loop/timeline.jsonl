@@ -13,3 +13,7 @@
 {"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 2 T6 done: 任务队列(单工作线程+Task状态机+去重)，3 测试通过"}
 {"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 2 DONE: 对抗门 4 项全过(编译/31测试/净室/依赖方向)。覆盖率 55%->75%。next_seed=Phase 3 全格式+多索引"}
 {"ts":"2026-07-02T15:00:00Z","phase":3,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 3 解析补全+多索引开始"}
+{"ts":"2026-07-02T15:45:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 3 T7 done: epub/pptx/归档穿透全格式补全，16 测试通过 + 端到端验证"}
+{"ts":"2026-07-02T15:45:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 3 T8 done: MultiIndexSearcher 多索引合并，测试通过"}
+{"ts":"2026-07-02T15:45:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 3 DONE: 对抗门 4 项全过(编译/33测试/净室/依赖方向)。覆盖率 75%->85%。next_seed=Phase 4 OCR+UI"}
+{"ts":"2026-07-02T15:45:00Z","phase":4,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 4 OCR+桌面UI 开始"}

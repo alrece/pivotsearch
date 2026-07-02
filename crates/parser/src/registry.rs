@@ -22,8 +22,8 @@ impl ParserRegistryImpl {
             Box::new(crate::html::HtmlParser::default()),
             Box::new(crate::docx::DocxParser),
             Box::new(crate::xlsx::SpreadsheetParser),
-            // PdfParser 按需加入——它需要 PDFium 动态库，构造可能失败，
-            // 故通过 with_pdf 开启。
+            Box::new(crate::epub::EpubParser),
+            Box::new(crate::pptx::PptxParser),
         ];
         Self { parsers }
     }
@@ -104,6 +104,11 @@ impl ParserRegistry for ParserRegistryImpl {
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("");
+
+        // 归档穿透：zip/tar 解包后递归解析内部文件
+        if crate::archive::is_archive(path) {
+            return crate::archive::parse_archive(path, self);
+        }
 
         // 路径 1：魔数 mime 检测 → 多 parser 容错尝试
         let candidates = self.find_by_mime(path);
