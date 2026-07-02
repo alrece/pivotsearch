@@ -120,3 +120,31 @@
     - "双扩展名检测：用 file_name().ends_with('.tar.gz') 而非 extension()（只返回最后一段）"
     - "HTML 文本提取：remove_blocks(去script/style) + 扫标签，比状态机更不易错"
     - "多索引合并：Vec<(id, Searcher)> 各查 top-N 合并，单索引失败跳过不致命"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 4 — Tauri 桌面 UI + OCR 骨架
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T18:50:00Z
+  milestone: "Phase 4 Tauri 桌面应用骨架——Vue 3 前端 + #[tauri::command] 桥接真实引擎，前后端编译通过"
+  decisions:
+    - "src-tauri 作为独立 Cargo 项目（exclude 在 workspace 外），避免 Tauri 的 build 依赖污染主 workspace"
+    - "Tauri 命令桥接：add_index 后台线程索引 + 进度 emit；search/list_indexes/remove/rebuild 从 state.index_dirs 重新 open Tantivy Index 查询"
+    - "search 命令用 MultiIndexSearcher 合并多个索引根结果，单索引损坏跳过不致命"
+    - "OCR feature gate 骨架：默认 ocr_available()=false，--features ocr 时占位（kreuzberg-tesseract 集成待语言包方案落地）"
+    - "icon 用 Python 生成占位 PNG（纯色 #3B5BDB），tauri icon 命令生成全套平台 icon"
+    - "filters 解构避免 Option.and_then 多次消费（E0382 moved value）"
+  lessons:
+    - { kind: keep,   text: "Tauri 2 + Vue 3 + Element Plus 前端栈工作正常，pnpm build 产出 dist/，src-tauri 编译通过", source: "retro" }
+    - { kind: keep,   text: "命令桥接完整：add_index/search/list_indexes/remove/rebuild 五个命令全部接真实 TreeIndex + Tantivy Index", source: "retro" }
+    - { kind: keep,   text: "search 用 MultiIndexSearcher 从 state.index_dirs 重新 open 查询，单索引失败跳过不致命", source: "retro" }
+    - { kind: improve, text: "fields/index 在后台线程 move 后外部不能再用——把 searcher 注册改为 search 时重新 open（add_index 不注册 searcher）", source: "retro" }
+    - { kind: improve, text: "Tauri 2 的 app.emit 需要 use tauri::Emitter，不像 1.x 直接可用", source: "retro" }
+    - { kind: improve, text: "Option.and_then 会消费 self，连续调用同一 Option 报 moved value——先解构再赋值", source: "retro" }
+    - { kind: try,    text: "Phase 5 Tauri dev/build 实际运行验证（需要 GUI 环境）+ PDFium/Tesseract 原生库三端打包", source: "retro" }
+    - { kind: try,    text: "Phase 5 补预览面板（get_preview 重新解析原文件）+ snippet 从 content 重建", source: "retro" }
+  patterns:
+    - "Tauri 项目结构：src-tauri 独立 Cargo 项目（workspace exclude），tauri.conf.json 配 frontendDist/devUrl"
+    - "命令桥接模式：#[tauri::command] + State<Arc<Mutex<EngineState>>> 共享，后台线程 std::thread::spawn + app.emit 进度"
+    - "search 重新 open 模式：命令从 state.index_dirs 读路径，每次 open Tantivy Index + SimpleSearcher，避免跨线程移动句柄"
+    - "icon 生成：Python struct+zlib 生成 PNG → tauri icon 命令生成全套（icns/ico/png）"

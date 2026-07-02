@@ -1,0 +1,32 @@
+[package]
+name = "pivotsearch-tauri"
+version = "0.1.0"
+description = "pivotsearch Tauri 后端"
+edition = "2021"
+rust-version = "1.75"
+
+[lib]
+name = "pivotsearch_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# pivotsearch 核心（组装根，可 import 具体实现）
+pivotsearch-contracts = { path = "../crates/contracts" }
+pivotsearch-parser = { path = "../crates/parser" }
+pivotsearch-index = { path = "../crates/index" }
+pivotsearch-search = { path = "../crates/search" }
+tantivy = "0.24"
+parking_lot = "0.12"
+walkdir = "2"
+tracing = "0.1"
+
+[features]
+default = []
+# OCR 可选（Phase 4 T9 引入 kreuzberg-tesseract 时开启）
+ocr = []

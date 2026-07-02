@@ -2,12 +2,32 @@
 //!
 //! OCR 层：Tesseract 集成（feature gate 可选）。
 //!
-//! Phase 0 占位：具体实现见 Phase 4 (T9)。
-//! 默认不编译，`cargo build --features ocr` 启用。
+//! 默认不编译（无 OCR feature 时此 crate 为空壳）。
+//! `cargo build --features ocr` 启用，引入 kreuzberg-tesseract。
+//!
+//! Phase 4 T9：当前为骨架。完整实现见 feature gate 内。
 
-// Phase 4 将实现（feature gate "ocr"）：
-// - tesseract.rs      kreuzberg-tesseract 集成 + 图片识别 + 扫描件 PDF（pdfium 渲染→OCR）
-// - language_pack.rs  语言包按需下载（chi_sim/eng 等 .traineddata）
+// 无 OCR feature 时，提供占位类型和说明
+#[cfg(not(feature = "ocr"))]
+pub fn ocr_available() -> bool {
+    false
+}
 
-// 无 OCR feature 时此 crate 为空，仅 re-export contracts 占位。
-pub use pivotsearch_contracts::ParseResult;
+#[cfg(not(feature = "ocr"))]
+pub fn ocr_image(_path: &std::path::Path) -> Result<String, &'static str> {
+    Err("OCR 未启用，请用 --features ocr 编译")
+}
+
+// OCR feature 启用时的实现（Phase 4 T9 完整版）
+#[cfg(feature = "ocr")]
+pub fn ocr_available() -> bool {
+    true
+}
+
+#[cfg(feature = "ocr")]
+pub fn ocr_image(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
+    // TODO Phase 4 T9 完整实现：kreuzberg-tesseract 集成
+    // 当前为骨架，实际引入 kreuzberg-tesseract 后实现
+    let _ = path;
+    Err("OCR feature 已启用，但 kreuzberg-tesseract 集成待实现".into())
+}

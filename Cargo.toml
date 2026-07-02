@@ -11,6 +11,8 @@ members = [
     "crates/core",
     "crates/cli",
 ]
+# src-tauri 是独立 Tauri 项目（有自己的 target 和 tauri-build），排除在 workspace 外
+exclude = ["src-tauri"]
 
 [workspace.package]
 version = "0.1.0"

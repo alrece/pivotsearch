@@ -17,3 +17,7 @@
 {"ts":"2026-07-02T15:45:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 3 T8 done: MultiIndexSearcher 多索引合并，测试通过"}
 {"ts":"2026-07-02T15:45:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 3 DONE: 对抗门 4 项全过(编译/33测试/净室/依赖方向)。覆盖率 75%->85%。next_seed=Phase 4 OCR+UI"}
 {"ts":"2026-07-02T15:45:00Z","phase":4,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 4 OCR+桌面UI 开始"}
+{"ts":"2026-07-02T18:50:00Z","phase":4,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 4 T10 done: Tauri 项目骨架 + Vue 3 前端 + #[tauri::command] 桥接真实引擎，前后端编译通过"}
+{"ts":"2026-07-02T18:50:00Z","phase":4,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 4 T9 done: OCR feature gate 骨架（默认禁用）"}
+{"ts":"2026-07-02T18:50:00Z","phase":4,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 4 DONE: 对抗门全过(workspace+src-tauri+前端编译/39测试/净室/依赖方向)。覆盖率 85%->92%。next_seed=Phase 5 打包+文档"}
+{"ts":"2026-07-02T18:50:00Z","phase":5,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 5 打磨与发布开始"}
