@@ -2,7 +2,7 @@ version: 1
 project: pivotsearch
 current_phase: 1  # Iteration 1 全 5 Phase 闭环完成（tag v0.1.0-alpha），retro 后进入 iteration 2
 current_step: ideate  # iteration 2 起点：ideate（等待用户确认启动）
-iteration: 2          # 第 2 轮宏观循环（v0.1 正式版打磨）
+iteration: 3          # 第 3 轮（待启动：环境依赖项 PDFium/UI/OCR）
 started_at: 2026-07-02T12:00:00Z
 mode: interactive           # interactive（遇决策点停）| auto（全自动不停）
 

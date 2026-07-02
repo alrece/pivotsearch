@@ -88,6 +88,10 @@ pub fn build_document(
 
     doc.add_text(fields.index_id, index_id);
 
+    // —— snippet_text：content 前 500 字符，stored，供 SnippetGenerator 高亮 ——
+    let snippet_source: String = parse_result.content.chars().take(500).collect();
+    doc.add_text(fields.snippet_text, &snippet_source);
+
     // —— content 字段（多值拼接）——
     // 1. 正文
     doc.add_text(fields.content, &parse_result.content);
@@ -186,5 +190,31 @@ mod tests {
         // 清理
         std::fs::remove_file(&path).ok();
         drop(index);
+    }
+}
+
+#[cfg(test)]
+mod snippet_tests {
+    use super::*;
+    use crate::schema::build_schema;
+    use tantivy::schema::Value;
+
+    #[test]
+    fn snippet_text_added_to_doc() {
+        let (_schema, fields, _) = build_schema();
+        let path = std::path::Path::new("test.md");
+        let parse_result = ParseResult {
+            content: "营收增长报告正文".to_string(),
+            title: Some("标题".to_string()),
+            ..Default::default()
+        };
+        let doc = build_document(&fields, path, &parse_result, "file://test.md", "idx");
+
+        // snippet_text 应在 doc 中且有值
+        let vals: Vec<_> = doc.get_all(fields.snippet_text).collect();
+        assert!(!vals.is_empty(), "snippet_text 应有值");
+        let text = vals[0].as_str();
+        assert!(text.is_some(), "snippet_text 应能 as_str");
+        assert!(text.unwrap().contains("营收"), "snippet_text 应含营收");
     }
 }

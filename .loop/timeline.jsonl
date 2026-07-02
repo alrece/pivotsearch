@@ -25,3 +25,6 @@
 {"ts":"2026-07-02T19:10:00Z","phase":5,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 5 T13 done: 中文停用词过滤 + README 完善支持格式表"}
 {"ts":"2026-07-02T19:10:00Z","phase":5,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 5 DONE + 全 5 Phase 闭环完成: workspace+src-tauri+前端编译/34测试/净室/依赖方向 全过. 覆盖率 92%->95%. pivotsearch v0.1 后端核心引擎+桌面UI骨架就绪"}
 {"ts":"2026-07-02T19:30:00Z","phase":6,"step":"retro","event":"complete","adversarial":"pass","mode":"interactive","detail":"Iteration 1 retro DONE: tag v0.1.0-alpha 打标。全 5 Phase 闭环审计覆盖率 95%。learnings 总结性 retro 写入(6 keep/4 improve/6 try)。gaps 审计 4 重要+4 次要缺口。next_seed 产 iteration 2 种子。iteration 1→2。"}
+{"ts":"2026-07-02T20:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 2 ① snippet 修复 done: snippet_text 字段+手动高亮，端到端验证通过"}
+{"ts":"2026-07-02T20:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 2 ⑥ 性能压测 done: 1087 文件/秒基线，scripts/bench.sh"}
+{"ts":"2026-07-02T20:00:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Iteration 2 DONE: 对抗门 6 项全过(含 snippet 端到端). 覆盖率 95%->96%. 剩余 gap 需环境(GUI/原生库)"}

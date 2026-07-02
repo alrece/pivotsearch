@@ -188,6 +188,7 @@ async fn search(
         let search_fields = SearchSchemaFields {
             uid: fields.uid,
             content: fields.content,
+            snippet_text: fields.snippet_text,
             title: fields.title,
             author: fields.author,
             r#type: fields.r#type,

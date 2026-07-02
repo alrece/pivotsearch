@@ -203,3 +203,24 @@
     - "CLI 先行 UI 后置：后端引擎用 CLI 端到端验证（index/search 命令）后再接 GUI，降低集成复杂度"
     - "受控原生依赖诚实标注：PDFium/Tesseract/老Office 三处硬伤在 AGENTS.md/STATE.yaml 显式记录，不掩盖"
     - "USTC mirror 应急：crates.io DNS 解析失败时配 [source.ustc] 绕过，写入全局 cargo config"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 2 — snippet 修复 + 性能压测（增量打磨）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 2
+  date: 2026-07-02T20:00:00Z
+  milestone: "Iteration 2 增量打磨——snippet 高亮修复 + 性能基线 1087 文件/秒 + 压测脚本"
+  decisions:
+    - "snippet 修复方案：新增 snippet_text stored 字段（content 前 500 字符），手动高亮替代 SnippetGenerator"
+    - "放弃 SnippetGenerator：它要求 query terms 的 field 和 snippet 字段一致，跨字段场景（query=content, snippet=snippet_text）返回空 fragment，手动高亮更可控"
+    - "性能压测用 bash 脚本（cargo run --release 测端到端），测得 1087 文件/秒索引吞吐"
+  lessons:
+    - { kind: keep,   text: "snippet 端到端验证通过：搜「营收」snippet 含高亮的「营」「收」", source: "retro" }
+    - { kind: keep,   text: "性能基线建立：1087 文件/秒索引吞吐，十万级文件约 92 秒", source: "retro" }
+    - { kind: improve, text: "Tantivy SnippetGenerator 跨字段不工作（query terms field≠snippet field 时返回空），用前应验证或用手动高亮", source: "retro" }
+    - { kind: improve, text: "调试 snippet 花了过多时间（以为是空，实际是 \\n 换行导致 grep 截断显示）——端到端调试应用完整输出而非 grep", source: "retro" }
+    - { kind: try,    text: "Iteration 3: PDFium 静态链接 + Tauri UI 运行验证 + OCR 集成（需环境）", source: "retro" }
+  patterns:
+    - "snippet 修复模式：新增 stored snippet_text 字段（content 前 N 字符）+ 手动 query 词高亮，绕过 SnippetGenerator 跨字段限制"
+    - "端到端调试：用完整输出而非 grep 片段，避免换行/截断误判"
+    - "性能基线脚本：bash 生成 N 文件 + python3 time 计时，测索引吞吐和查询延迟"

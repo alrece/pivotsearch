@@ -90,3 +90,29 @@
   coverage_pct: 95
   # 95%：核心引擎（索引+解析+增量+监听+队列+搜索+多格式+多索引）全部跑通，
   # CI/文档/中文调优就绪。缺：snippet修复/真实测试/静态链接/UI运行验证/OCR集成/预览/压测。
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 2 审计
+# ═══════════════════════════════════════════════════════════════
+- iteration: 2
+  date: 2026-07-02T20:00:00Z
+  intended:
+    - "修复 snippet 高亮（跨 4 Phase 技术债）"
+    - "补真实格式测试文件"
+    - "PDFium 静态链接"
+    - "Tauri UI 运行验证"
+    - "OCR 集成"
+    - "性能压测"
+  delivered:
+    - "✅ snippet 高亮修复（snippet_text 字段 + 手动高亮，端到端验证通过）"
+    - "✅ 性能压测脚本 + 基线（1087 文件/秒，scripts/bench.sh）"
+    - "⚠️ 真实 xlsx/docx 测试需额外库（openpyxl 不可用，csv 验证通过）"
+    - "⚠️ PDFium 静态链接未落地（需下载预编译 binary）"
+    - "⚠️ Tauri UI 运行验证需 GUI 环境"
+    - "⚠️ OCR 集成需 Tesseract 库"
+  gaps:
+    - { severity: 重要, item: "PDFium 静态链接三端方案未落地", root_cause: "需下载预编译 PDFium binary，sandbox 无网络下载能力" }
+    - { severity: 重要, item: "Tauri UI 未实际运行验证", root_cause: "sandbox 无 GUI 环境" }
+    - { severity: 次要, item: "OCR kreuzberg-tesseract 未实际集成", root_cause: "需 Tesseract 库 + 语言包" }
+    - { severity: 次要, item: "真实 xlsx/docx 测试文件缺失", root_cause: "需 openpyxl/docx 生成库" }
+  coverage_pct: 96

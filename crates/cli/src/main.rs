@@ -77,6 +77,7 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
     let search_fields = SearchSchemaFields {
         uid: fields.uid,
         content: fields.content,
+            snippet_text: fields.snippet_text,
         title: fields.title,
         author: fields.author,
         r#type: fields.r#type,
@@ -164,6 +165,7 @@ fn cmd_search(query: &str, index_path: &PathBuf) -> anyhow::Result<()> {
     let search_fields = SearchSchemaFields {
         uid: fields.uid,
         content: fields.content,
+            snippet_text: fields.snippet_text,
         title: fields.title,
         author: fields.author,
         r#type: fields.r#type,

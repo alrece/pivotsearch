@@ -12,6 +12,7 @@ use tantivy::tokenizer::{TextAnalyzer, TokenizerManager};
 pub mod field_names {
     pub const UID: &str = "uid";
     pub const CONTENT: &str = "content";
+    pub const SNIPPET_TEXT: &str = "snippet_text";  // content 前 500 字节，stored，供高亮
     pub const TITLE: &str = "title";
     pub const AUTHOR: &str = "author";
     pub const TYPE: &str = "type";
@@ -29,6 +30,7 @@ pub const JIEBA_TOKENIZER_NAME: &str = "jieba";
 pub struct SchemaFields {
     pub uid: Field,
     pub content: Field,
+    pub snippet_text: Field,
     pub title: Field,
     pub author: Field,
     pub r#type: Field,
@@ -67,6 +69,8 @@ pub fn build_schema() -> (Schema, SchemaFields, TokenizerManager) {
     );
     // content：jieba 分词，不存（省空间，预览时重新解析）
     let content = builder.add_text_field(field_names::CONTENT, jieba_text_options(false));
+    // snippet_text：content 前 500 字符，jieba 分词 + stored，供 SnippetGenerator 高亮
+    let snippet_text = builder.add_text_field(field_names::SNIPPET_TEXT, jieba_text_options(true));
     // title：jieba 分词 + 存
     let title = builder.add_text_field(field_names::TITLE, jieba_text_options(true));
     // author：jieba 分词 + 存（多值）
@@ -116,6 +120,7 @@ pub fn build_schema() -> (Schema, SchemaFields, TokenizerManager) {
     let fields = SchemaFields {
         uid,
         content,
+        snippet_text,
         title,
         author,
         r#type,
@@ -145,7 +150,7 @@ mod tests {
     fn schema_has_nine_fields() {
         let (schema, _fields, _) = build_schema();
         let field_count = schema.fields().count();
-        assert_eq!(field_count, 9, "schema 应有 9 个 field（含 author 多值）");
+        assert_eq!(field_count, 10, "schema 应有 9 个 field（含 author 多值）");
     }
 
     #[test]
