@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   search as searchApi,
   listIndexes,
@@ -183,6 +184,22 @@ async function refreshIndexes() {
     indexes.value = await listIndexes();
   } catch (e) {
     console.error("获取索引失败", e);
+  }
+}
+
+// ═══ 目录选择对话框 ═══
+async function browseFolder() {
+  try {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: "选择要索引的目录",
+    });
+    if (selected) {
+      newPath.value = selected as string;
+    }
+  } catch (e) {
+    console.error("目录选择失败", e);
   }
 }
 
@@ -392,8 +409,10 @@ onUnmounted(() => {
       <div class="index-add">
         <el-input
           v-model="newPath"
-          placeholder="输入要索引的目录路径（如 /Users/alrece/Documents）"
+          placeholder="点击右侧按钮选择目录，或手动输入路径"
+          @keyup.enter="onAddIndex"
         />
+        <el-button @click="browseFolder">📁 浏览</el-button>
         <el-button type="primary" @click="onAddIndex">添加</el-button>
       </div>
 
