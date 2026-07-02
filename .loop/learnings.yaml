@@ -61,3 +61,34 @@
     - "USTC mirror 解决 crates.io DNS：~/.cargo/config.toml 配 [source.ustc] registry='sparse+https://mirrors.ustc.edu.cn/crates.io-index/'"
     - "API 查证驱动开发：遇到编译错误先查 crate 源码（~/.cargo/registry/src/）确认真实签名，不靠记忆"
     - "渐进式 plan 执行：T1→T2→T3 每 plan 完成跑子测试，全过再跑 Phase 级对抗门"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 2 — 增量索引 + 文件监听 + 任务队列
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T15:00:00Z
+  milestone: "Phase 2 增量与监听完成——pivotsearch 从全量重建进化到'改动即更新'，31 测试全过"
+  decisions:
+    - "tree_index 用 SQLite（rusqlite）持久化，替代经典桌面搜索工具的 Java 序列化——跨版本稳定、可查询"
+    - "增量算法用 HashMap unseen diff（克隆→遍历 remove→剩余即删除），mtime 比对判定修改"
+    - "解析失败/不支持的文件仍记录到 tree_index（parser=null）避免重复重试坏文件"
+    - "watcher 用 notify-debouncer-full 做 1s 防抖（编辑器保存触发 N 次事件只发 1 个），事件过滤跳过 lock/隐藏文件"
+    - "queue 单工作线程串行执行（Tantivy 单 writer 强约束），通过 TaskHandler trait 解耦不依赖 index crate"
+    - "queue 去重：同 index_id 的冗余 Update 任务丢弃，Rebuild 不去重"
+  lessons:
+    - { kind: keep,   text: "增量算法三类变化全部验证：新增(+N)/修改(~N)/删除(-N) + 未变跳过，unseen diff 模式工作正常", source: "retro" }
+    - { kind: keep,   text: "SQLite tree_index CRUD + 级联删除验证通过，持久化状态可靠", source: "retro" }
+    - { kind: keep,   text: "文件监听端到端验证：创建文件后收到事件、lock 文件被过滤、防抖窗口 1s 合并事件", source: "retro" }
+    - { kind: keep,   text: "queue 通过 TaskHandler trait 解耦——queue crate 不依赖 index crate，符合依赖方向铁律", source: "retro" }
+    - { kind: keep,   text: "queue 去重验证：同 index_id 的 5 个 Update 任务只执行 1 次", source: "retro" }
+    - { kind: improve, text: "IndexId/Uid 类型别名(&String)与 &str 不兼容导致 18 个编译错误——类型别名的方法签名应直接用 &str 更通用", source: "retro" }
+    - { kind: improve, text: "notify 6.1 的 watch 方法在 Watcher trait 上需要 import，且 RecommendedWatcher 平台相关（macOS=FsEventWatcher）——需 use notify::Watcher 引入 trait", source: "retro" }
+    - { kind: improve, text: "queue 测试偶现时序竞态（500ms 等待不够稳定）——生产代码应用 condvar/channel 而非 sleep 等待", source: "retro" }
+    - { kind: try,    text: "Phase 3 补全解析格式（pptx/epub/归档穿透）+ 多索引合并搜索", source: "retro" }
+    - { kind: try,    text: "Phase 3 补真实 PDF/docx/xlsx 测试文件（当前只有 txt）", source: "retro" }
+    - { kind: try,    text: "Phase 3 修复 snippet 高亮从 content 重建（当前用 title 导致片段为空）", source: "retro" }
+  patterns:
+    - "unseen diff 增量算法：HashMap 克隆→遍历 remove→剩余即删除，三类变化一次遍历处理"
+    - "类型别名 &String 参数应改 &str：pub type X=String 后 fn f(&X) 不接受 &str，改 fn f(&str) 更通用"
+    - "notify-debouncer-full 防抖：1s 窗口 + 事件过滤，watch_with_callback 模式把过滤后事件发 callback"
+    - "queue TaskHandler trait 解耦：queue 不依赖 index，由组装根注入闭包/实现"

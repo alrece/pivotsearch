@@ -27,11 +27,11 @@ pub enum WatchEventKind {
 /// 监听器只负责产出有效事件，索引更新由 queue 消费。
 pub trait Watcher: Send + Sync {
     /// 开始监听一个索引根目录。
-    fn watch(&self, index_id: &IndexId, path: &Path) -> Result<()>;
+    fn watch(&self, index_id: &str, path: &Path) -> Result<()>;
 
     /// 停止监听一个索引根目录。
-    fn unwatch(&self, index_id: &IndexId) -> Result<()>;
+    fn unwatch(&self, index_id: &str) -> Result<()>;
 
     /// 列出当前正在监听的索引根。
-    fn watched_indexes(&self) -> Vec<IndexId>;
+    fn watched_indexes(&self) -> Vec<String>;
 }

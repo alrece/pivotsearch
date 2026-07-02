@@ -1,7 +1,7 @@
 version: 1
 project: pivotsearch
-current_phase: 2            # Phase 1 核心闭环完成，进入 Phase 2 增量与监听
-current_step: execute       # Phase 2：T4 增量索引 → T5 文件监听 → T6 任务队列
+current_phase: 3            # Phase 2 增量与监听完成，进入 Phase 3 解析补全+多索引
+current_step: execute       # Phase 3：T7 全格式 + T8 多索引合并
 iteration: 1                # 第几轮宏观循环
 started_at: 2026-07-02T12:00:00Z
 mode: interactive           # interactive（遇决策点停）| auto（全自动不停）
@@ -30,8 +30,8 @@ step_map:
 phase_status:
   0: { status: done,      step: scaffold, blockers: [], artifacts: ["AGENTS.md", "CLAUDE.md", "README.md", "DESIGN.md", "Makefile", "Cargo.toml", "crates/", ".loop/", "openspec/", ".planning/", "docs/"] }
   1: { status: done,      step: execute,  blockers: [], artifacts: ["crates/contracts/", "crates/index/", "crates/parser/", "crates/search/", "crates/cli/"] }
-  2: { status: active,    step: execute,  blockers: [], artifacts: ["crates/"] }
-  3: { status: pending,   step: null,     blockers: [], artifacts: [] }
+  2: { status: done,      step: execute,  blockers: [], artifacts: ["crates/index/src/tree_index.rs", "crates/index/src/incremental.rs", "crates/watcher/", "crates/queue/"] }
+  3: { status: active,    step: execute,  blockers: [], artifacts: ["crates/"] }
   4: { status: pending,   step: null,     blockers: [], artifacts: [] }
   5: { status: pending,   step: null,     blockers: [], artifacts: [] }
   6: { status: pending,   step: null,     blockers: [], artifacts: [] }

@@ -8,3 +8,8 @@
 {"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 1 T3 done: search SimpleSearcher + cli index/search 闭环，中文/英文检索端到端验证通过"}
 {"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 1 DONE: 对抗门 4 项全过(编译/16测试/净室/依赖方向)。覆盖率 30%→55%。next_seed=Phase 2 增量索引+文件监听+任务队列"}
 {"ts":"2026-07-02T14:15:00Z","phase":2,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 2 增量与监听开始"}
+{"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 2 T4 done: 增量索引(mtime+unseenDiff) + SQLite tree_index，15 测试通过"}
+{"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 2 T5 done: 文件监听(notify+防抖+过滤)，4 测试通过"}
+{"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 2 T6 done: 任务队列(单工作线程+Task状态机+去重)，3 测试通过"}
+{"ts":"2026-07-02T15:00:00Z","phase":2,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 2 DONE: 对抗门 4 项全过(编译/31测试/净室/依赖方向)。覆盖率 55%->75%。next_seed=Phase 3 全格式+多索引"}
+{"ts":"2026-07-02T15:00:00Z","phase":3,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 3 解析补全+多索引开始"}

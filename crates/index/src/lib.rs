@@ -1,16 +1,14 @@
 //! # pivotsearch-index
 //!
-//! 索引层：Tantivy schema + Document 组装 + uid 算法 +（Phase 2）增量算法 + tree_index。
-//!
-//! 依赖方向：只依赖 contracts，不依赖其他能力 crate。
+//! 索引层：Tantivy schema + Document 组装 + 增量算法 + tree_index（SQLite）。
 
 pub mod schema;
 pub mod tokenizer;
 pub mod doc_builder;
+pub mod tree_index;
+pub mod incremental;
 
-pub use schema::{build_schema, SchemaFields, field_names};
+pub use schema::{build_schema, SchemaFields, field_names, JIEBA_TOKENIZER_NAME};
 pub use doc_builder::{build_document, compute_uid, extract_path};
-
-// Phase 2 将实现：
-// - incremental.rs   mtime 比对 + unseenDocs diff + 归档跳过
-// - tree_index.rs    SQLite 持久化 tree_index
+pub use tree_index::{TreeIndex, IndexedFile, IndexRoot};
+pub use incremental::{update_incremental, IncrementalConfig, IncrementalStats};
