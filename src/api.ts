@@ -56,9 +56,15 @@ export async function addIndex(path: string): Promise<string> {
 export async function search(
   query: string,
   filters: SearchFilters | null,
-  page: number
+  page: number,
+  caseSensitive: boolean
 ): Promise<SearchResponse> {
-  return invoke<SearchResponse>("search", { query, filters, page });
+  return invoke<SearchResponse>("search", {
+    query,
+    filters,
+    page,
+    caseSensitive,
+  });
 }
 
 export async function getPreview(uid: string): Promise<PreviewData> {

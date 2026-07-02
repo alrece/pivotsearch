@@ -103,13 +103,22 @@ impl SimpleSearcher {
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0);
 
-            // snippet 从 snippet_text 字段（content 前 500 字符 stored）生成，
-            // 手动高亮：在 snippet_source 里找 query 原始词，用 <b> 包裹
+            // snippet 从 snippet_text 字段（content 前 500 字节 stored）生成
             let snippet_source = doc_get_text(&doc, self.fields.snippet_text).unwrap_or_default();
+
+            // 大小写敏感：检查原文是否含精确大小写的查询词（任一词匹配即保留）
+            if request.case_sensitive && !snippet_source.is_empty() {
+                let query_terms: Vec<&str> = request.query.split_whitespace().collect();
+                let exact_match = query_terms.iter().any(|t| snippet_source.contains(t));
+                if !exact_match {
+                    continue; // 小写召回但原文大小写不匹配，过滤掉
+                }
+            }
+
             let snippet = if snippet_source.is_empty() {
                 title.clone()
             } else {
-                highlight_query(&snippet_source, &request.query)
+                highlight_query(&snippet_source, &request.query, request.case_sensitive)
             };
 
             results.push(SearchResult {
@@ -158,36 +167,35 @@ fn doc_get_text(
 ///
 /// 简单可靠，不依赖 Tantivy SnippetGenerator（后者对跨字段场景支持有限）。
 /// query 被空格/标点拆分为多个词，每个词在 text 中做大小写不敏感匹配。
-fn highlight_query(text: &str, query: &str) -> String {
-    // 截取前 200 字符作为片段
+fn highlight_query(text: &str, query: &str, case_sensitive: bool) -> String {
     let snippet: String = text.chars().take(200).collect();
     let mut result = snippet.clone();
 
-    // 把 query 拆成词（中文按字符，英文按空格）
     let terms: Vec<String> = query
         .split_whitespace()
         .flat_map(|w| {
-            // 中文词直接用，英文按整体
             if w.chars().any(|c| c.is_ascii_alphanumeric()) {
-                vec![w.to_lowercase()]
+                vec![w.to_string()]
             } else {
-                // 中文按 jieba 可能切的字符组
                 w.chars().map(|c| c.to_string()).collect()
             }
         })
         .collect();
 
-    // 对每个 term 做替换（从后往前替换避免偏移）
     for term in &terms {
-        if term.is_empty() || term.len() < 2 && !term.chars().next().map(|c| !c.is_ascii()).unwrap_or(true) {
+        if term.is_empty() || (term.len() < 2 && !term.chars().next().map(|c| !c.is_ascii()).unwrap_or(true)) {
             continue;
         }
-        let term_lower = term.to_lowercase();
+        // 大小写敏感用原文匹配，不敏感用小写匹配
+        let (search_in, search_for) = if case_sensitive {
+            (result.clone(), term.clone())
+        } else {
+            (result.to_lowercase(), term.to_lowercase())
+        };
         let mut offset = 0;
         let mut highlighted = String::new();
-        let snippet_lower = result.to_lowercase();
         let mut last_end = 0;
-        while let Some(pos) = snippet_lower[offset..].find(&term_lower) {
+        while let Some(pos) = search_in[offset..].find(&search_for) {
             let abs_pos = offset + pos;
             highlighted.push_str(&result[last_end..abs_pos]);
             highlighted.push_str("<b>");
@@ -196,7 +204,7 @@ fn highlight_query(text: &str, query: &str) -> String {
             highlighted.push_str("</b>");
             last_end = end.min(result.len());
             offset = end;
-            if offset >= snippet_lower.len() {
+            if offset >= search_in.len() {
                 break;
             }
         }

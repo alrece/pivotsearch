@@ -57,11 +57,12 @@ impl MultiIndexSearcher {
             // 每个索引查询 limit 条
             let sub_request = SearchRequest {
                 query: request.query.clone(),
-                index_ids: None, // SimpleSearcher 是单索引，不需要
+                index_ids: None,
                 parsers: request.parsers.clone(),
                 min_size: request.min_size,
                 max_size: request.max_size,
                 page: 0,
+                case_sensitive: request.case_sensitive,
             };
             match searcher.search(&sub_request) {
                 Ok(response) => {

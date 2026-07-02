@@ -20,6 +20,9 @@ pub struct SearchRequest {
     pub max_size: Option<i64>,
     /// 页码（0-based）。
     pub page: usize,
+    /// 大小写敏感（true 时对召回结果做精确大小写二次过滤）。
+    #[serde(default)]
+    pub case_sensitive: bool,
 }
 
 

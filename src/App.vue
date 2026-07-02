@@ -69,6 +69,8 @@ let unlistenProgress: (() => void) | null = null;
 
 // ═══ 文件类型筛选 ═══
 const filterType = ref(""); // 空=全部
+// ═══ 大小写敏感 ═══
+const caseSensitive = ref(false);
 const typeOptions = [
   { label: "全部", value: "" },
   { label: "PDF", value: "pdf" },
@@ -114,7 +116,7 @@ function onSearchInput() {
 
 async function doSearch() {
   try {
-    const resp = await searchApi(query.value, null, 0);
+    const resp = await searchApi(query.value, null, 0, caseSensitive.value);
     results.value = resp.results;
     totalHits.value = resp.total_hits;
     selectedIndex.value = -1;
@@ -365,6 +367,15 @@ onUnmounted(() => {
           :value="opt.value"
         />
       </el-select>
+      <el-tooltip :content="caseSensitive ? '大小写敏感：已开启' : '大小写敏感：已关闭'" placement="bottom">
+        <button
+          class="case-toggle"
+          :class="{ active: caseSensitive }"
+          @click="caseSensitive = !caseSensitive; onSearchInput()"
+        >
+          Aa
+        </button>
+      </el-tooltip>
       <el-button size="large" type="primary" @click="doSearch" :loading="loading">
         搜索
       </el-button>
@@ -602,6 +613,33 @@ body {
 .type-select {
   width: 100px;
   flex-shrink: 0;
+}
+
+.case-toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ps-border);
+  border-radius: 6px;
+  background: var(--ps-surface);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ps-text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.case-toggle:hover {
+  border-color: var(--ps-primary);
+}
+
+.case-toggle.active {
+  background: var(--ps-primary);
+  color: #fff;
+  border-color: var(--ps-primary);
 }
 
 /* ═══ 主体 ═══ */

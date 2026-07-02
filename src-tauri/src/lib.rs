@@ -158,6 +158,7 @@ async fn search(
     query: String,
     filters: Option<SearchFilters>,
     page: usize,
+    case_sensitive: Option<bool>,
     state: State<'_, Arc<Mutex<EngineState>>>,
 ) -> Result<pivotsearch_contracts::SearchResponse, String> {
     let index_dirs = {
@@ -222,6 +223,7 @@ async fn search(
         min_size,
         max_size,
         page,
+        case_sensitive: case_sensitive.unwrap_or(false),
     };
     multi.search(&request).map_err(|e| e.to_string())
 }
