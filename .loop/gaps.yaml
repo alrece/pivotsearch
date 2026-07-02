@@ -181,3 +181,29 @@
   gaps: []
   coverage_pct: 99
   # 99%：所有功能 gap 清零。1% 留给三端 CI 实际运行（需 push GitHub）+ Windows/Linux 打包。
+
+# ═══════════════════════════════════════════════════════════════
+# 宏观循环总结性审计（v0.1.0 正式版归档）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 5
+  date: 2026-07-02T22:00:00Z
+  intended:
+    - "跨平台本地全文搜索桌面应用，AnyTXT 开源替代，三端可用"
+    - "完整工程方法论管理（Loop Engineering 全程可审计）"
+  delivered:
+    - "✅ 9 格式解析（含真实 PDF/docx 验证）+ 增量索引 + 文件监听 + 队列 + 多索引搜索 + snippet 高亮"
+    - "✅ Tauri 2 桌面 UI（.app + .dmg 打包 + 启动运行验证）"
+    - "✅ OCR（feature gate，真实识别验证 'Hello Revenue Report'）"
+    - "✅ jieba 中文分词 + 停用词 + GBK/Big5 编码"
+    - "✅ 三端 CI + Release workflow + 性能基线 1087 文件/秒"
+    - "✅ Loop Engineering 全程（39 timeline / 4 decisions / 7 learnings / 7 gaps 审计）"
+    - "✅ 44 测试全过，净室合规，覆盖率 99%，tag v0.1.0"
+    - "⚠️ Windows/Linux 打包未实测（需 CI 实跑）"
+    - "⚠️ 8 个 clippy warning 残留"
+    - "⚠️ PDFium dylib 随 app 打包 @rpath 未实际配置（开发期 DYLD_LIBRARY_PATH 够用）"
+  gaps:
+    - { severity: 次要, item: "三端 CI 实跑未验证（需 push 到 GitHub 触发 Actions）", root_cause: "本地无 GitHub Actions 运行环境" }
+    - { severity: 次要, item: "Windows/Linux 打包产物未生成", root_cause: "macOS 无法交叉编译 Win/Linux Tauri" }
+    - { severity: 次要, item: "PDFium dylib @rpath 打包配置未实测", root_cause: "需 tauri build + 实际安装 app 验证" }
+    - { severity: 次要, item: "8 个 clippy 风格 warning", root_cause: "complex types / sort_by 建议" }
+  coverage_pct: 99

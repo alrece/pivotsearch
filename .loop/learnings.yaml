@@ -290,3 +290,30 @@
     - "OCR 验证模式：PIL 生成含文字 PNG + eng 语言包 → image 解码 → TesseractAPI → 断言识别结果"
     - "Tauri 验证：pnpm tauri build（非 dev）→ 检查 .app/.dmg 产物 → open app + ps 检查进程"
     - "gap 清零里程碑：每 iteration 突破 1-2 个'环境依赖'gap，5 轮从 30% 到 99%"
+
+# ═══════════════════════════════════════════════════════════════
+# 宏观循环总结性 retro（iteration 1-5 完整闭环，v0.1.0 正式版归档）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 5
+  date: 2026-07-02T22:00:00Z
+  milestone: "pivotsearch v0.1.0 正式版归档——从调研到完整开源应用的完整宏观循环（5 iteration / 11 commit / 2 tag / 39 timeline 事件 / 4930 行代码 / 44 测试 / 99% 覆盖率）"
+  decisions:
+    - "宏观方向校准：用户提'反推 AnyTXT'→诚实纠正为开源组件栈重做（避免闭源逆向法律风险），ExitPlanMode 审批后执行"
+    - "种子驱动增量迭代：iteration 1 跑完整 5 Phase 闭环，iteration 2-5 只推进 retro next_seed（不重跑设计），覆盖率 30→99%"
+    - "环境依赖项不放弃：每 iteration 尝试突破'需 GUI/原生库'gap——iteration 3 PDFium dylib、iteration 4 OCR cmake、iteration 5 Tauri 打包全部突破"
+    - "对抗门全程守护：每 plan/Phase/iteration 都跑确定性检查（编译+测试+净室+依赖方向），未过不进下游"
+  lessons:
+    - { kind: keep,   text: "Loop Engineering 全自动闭环有效：--auto 模式连续推进 5 iteration，只在里程碑处停，39 事件全程可审计", source: "retro" }
+    - { kind: keep,   text: "覆盖率单调爬升 30→55→95→96→97→98→99%，每 iteration 突破 1-2 个 gap，不回头不退化", source: "retro" }
+    - { kind: keep,   text: "诚实可行性反馈在起点避免错路：反推 AnyTXT→纠正为开源重做，Tantivy API 差异先查源码再写", source: "retro" }
+    - { kind: keep,   text: "环境依赖 gap 渐进突破：PDFium(下载dylib)→OCR(brew cmake)→Tauri(build打包)，每轮'不可能'变'可能'", source: "retro" }
+    - { kind: keep,   text: "净室红线全程零违反：grep 检查自动化（make cleanroom + CI gate），借鉴设计不复制代码", source: "retro" }
+    - { kind: keep,   text: "Tantivy 0.24 适配清单沉淀到 learnings（TextOptions/CompactDoc/Tokenizer Clone/Value trait），后续不重复踩坑", source: "retro" }
+    - { kind: improve, text: "snippet 高亮跨 4 Phase 才修（以为是空实际是 \\n 显示问题），端到端调试应用完整输出而非 grep", source: "retro" }
+    - { kind: improve, text: "8 个 clippy warning 残留（complex types 风格建议），v0.2 应清理", source: "retro" }
+    - { kind: try,    text: "v0.2 iteration: 三端 CI 实跑（push GitHub）+ Windows/Linux 打包 + PDFium 静态链接 + clippy 清零", source: "retro" }
+  patterns:
+    - "种子驱动增量迭代：retro next_seed → 直接 execute → 对抗门 → commit，不重跑 Phase 1-2 设计"
+    - "环境依赖突破模式：每 iteration 尝试一个'不可能'gap，装工具(brew cmake)/下载(dylib/traineddata)/跑构建(tauri build)"
+    - "跨语言方法论复用：cloudpivot 的 .loop/openspec/.planning/对抗门 框架原样用到 Rust，只改技术栈"
+    - "诚实可行性反馈：起点纠错方向 + 计划阶段标三处硬伤 + 调试先查源码再写"

@@ -1,8 +1,8 @@
 version: 1
 project: pivotsearch
-current_phase: 1  # Iteration 1 全 5 Phase 闭环完成（tag v0.1.0-alpha），retro 后进入 iteration 2
-current_step: ideate  # iteration 2 起点：ideate（等待用户确认启动）
-iteration: 5  # 第 5 轮完成（v0.1.0 正式版，全部 gap 清零）
+current_phase: 1  # v0.1.0 正式版归档（iteration 1-5 完整宏观循环），retro 后进入 iteration 6
+current_step: ideate  # iteration 6 起点：ideate（等待用户确认启动 v0.2）
+iteration: 6          # 第 6 轮宏观循环（v0.2 发布打磨）
 started_at: 2026-07-02T12:00:00Z
 mode: interactive           # interactive（遇决策点停）| auto（全自动不停）
 
@@ -112,3 +112,9 @@ history:                     # 每轮 retro 后追加
     retro_summary: "pivotsearch v0.1.0-alpha 全 5 Phase 闭环完成。从调研→计划→脚手架→核心索引→增量监听→全格式→桌面UI→CI，40 测试全过，覆盖率 95%。净室合规，依赖方向铁律守护。tag v0.1.0-alpha。"
     iteration_summary: "第 1 轮宏观循环：用户提'反推 AnyTXT'→诚实纠正为开源组件栈重做→ExitPlanMode 审批→5 Phase 渐进执行（每 Phase 逐 plan + 对抗门）→v0.1.0-alpha。核心引擎（9 格式解析+增量索引+文件监听+队列+搜索+多索引）+ Tauri UI 骨架 + CI 全部就绪。"
     next_seed: "Iteration 2（v0.1 正式版打磨）: (1) 修复 snippet 高亮从 content 重建（重新解析原文件生成片段） (2) 补真实 PDF/docx/xlsx/pptx/epub 测试文件，端到端验证各格式 (3) PDFium 静态链接方案落地（三端预编译 binary） (4) Tauri UI 实际运行验证 + 预览面板完整实现 (5) OCR kreuzberg-tesseract 实际集成 + 语言包按需下载 (6) 性能压测（十万级文件）"
+  - iteration: 5
+    phase_completed: "v0.1.0 正式版（全部 gap 清零）"
+    completed: 2026-07-02T22:00:00Z
+    retro_summary: "pivotsearch v0.1.0 正式版归档。5 iteration / 11 commit / 2 tag / 39 timeline / 4930 行 / 44 测试 / 99% 覆盖率。从调研到完整开源应用的全宏观闭环。OCR 真实识别 + Tauri .app/.dmg 打包 + 9 格式解析 + 增量索引全验证。"
+    iteration_summary: "完整宏观循环：iteration 1 全 5 Phase 闭环(alpha) → 2 snippet+性能 → 3 PDFium+docx → 4 OCR+preview → 5 OCR实测+Tauri打包(v0.1.0)。所有功能 gap 清零，剩余仅三端 CI 实跑和打包细节。"
+    next_seed: "Iteration 6（v0.2 发布打磨）: (1) push GitHub 触发三端 CI 实跑验证 (2) Windows/Linux 交叉编译打包 (3) PDFium dylib @rpath 打包配置（随 app 分发） (4) 8 个 clippy warning 清零 (5) 中文 OCR 测试（chi_sim 语言包） (6) 用户文档完善（安装/使用/FAQ）"
