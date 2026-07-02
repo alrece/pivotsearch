@@ -246,3 +246,26 @@
     - "PDFium 分发：bblanchon/pdfium-binaries 下载 dylib + DYLD_LIBRARY_PATH（开发）/ @rpath（打包），三端各有对应包"
     - "OOXML 测试文件构造：Python zipfile 写 5 个必需部件（Content_Types + _rels/.rels + word/_rels/document.xml.rels + word/document.xml + word/styles.xml）"
     - "PDF parser 默认启用 + 优雅降级：PdfParser.pdfium=None 时 parse 返回错误但不 panic，其他格式不受影响"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 4 — OCR 编译集成 + get_preview + PDFium 分发脚本
+# ═══════════════════════════════════════════════════════════════
+- iteration: 4
+  date: 2026-07-02T21:00:00Z
+  milestone: "OCR feature gate 编译路径打通 + get_preview 完整实现 + PDFium 三端获取脚本"
+  decisions:
+    - "kreuzberg-tesseract 用 optional 依赖 + feature gate（dep:kreuzberg-tesseract），默认不编译避免重依赖"
+    - "OCR 实现用 image crate 解码图片 + TesseractAPI.set_image 喂像素数据（PSM_AUTO 模式）"
+    - "cmake 是 kreuzberg-tesseract 的硬依赖（编译 Tesseract+Leptonica C++ 源码），需 brew install cmake"
+    - "get_preview 从 uid 反推 path，重新解析原文件返回完整 content（文件不存在时 exists=false）"
+    - "PDFium 三端获取脚本 fetch-pdfium.sh（bblanchon 按平台下载 tgz）"
+  lessons:
+    - { kind: keep,   text: "OCR feature gate 编译路径打通：--features ocr 触发 kreuzberg-tesseract 编译（含 Tesseract C++ 静态构建 15s）", source: "retro" }
+    - { kind: keep,   text: "get_preview 完整实现：重新解析原文件返回 content，文件不存在优雅降级 exists=false", source: "retro" }
+    - { kind: improve, text: "kreuzberg-tesseract 要求 rustc 1.91（ocr crate 用 --ignore-rust-version），三端兼容性需注意", source: "retro" }
+    - { kind: improve, text: "kreuzberg-tesseract 编译时自动下载 Tesseract 源码 + cmake 构建，首次编译 15s——CI 需缓存", source: "retro" }
+    - { kind: try,    text: "Iteration 5: Tauri UI 实际运行验证 + OCR 真实图片测试（需语言包 chi_sim.traineddata）", source: "retro" }
+  patterns:
+    - "optional 依赖 feature gate：[dependencies] dep={version,optional=true} + [features] feat=['dep:dep']，默认不编译"
+    - "OCR 图片识别模式：image::open 解码 → to_rgb8 取像素 → TesseractAPI.set_image(raw, w, h, bpp, bpl) → recognize → get_utf8_text"
+    - "get_preview 重新解析模式：uid strip_prefix file:// → PathBuf → registry.parse → content（保证最新，与索引解耦）"

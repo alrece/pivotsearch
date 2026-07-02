@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Emitter, Manager, State};
 
-use pivotsearch_contracts::{IndexAction, SearchRequest};
+use pivotsearch_contracts::{IndexAction, ParserRegistry, SearchRequest};
 use pivotsearch_index::{build_schema, compute_uid, incremental::*, tree_index::*};
 use pivotsearch_parser::ParserRegistryImpl;
 use pivotsearch_search::{MultiIndexSearcher, SearchSchemaFields, SimpleSearcher};
@@ -218,17 +218,40 @@ async fn search(
     multi.search(&request).map_err(|e| e.to_string())
 }
 
-/// 获取预览数据。
+/// 获取预览数据：从 uid 反推 path，重新解析原文件返回完整 content。
 #[tauri::command]
 async fn get_preview(uid: String) -> Result<serde_json::Value, String> {
-    let _ = uid;
-    Ok(serde_json::json!({
-        "uid": "",
-        "path": "",
-        "parser": "",
-        "content": "",
-        "exists": false,
-    }))
+    let path_str = uid.strip_prefix("file://").unwrap_or(&uid);
+    let path = PathBuf::from(path_str);
+
+    if !path.exists() {
+        return Ok(serde_json::json!({
+            "uid": uid,
+            "path": path_str,
+            "parser": "",
+            "content": "",
+            "exists": false,
+        }));
+    }
+
+    // 用 parser 注册表重新解析原文件
+    let registry = ParserRegistryImpl::with_builtin_parsers().with_pdf();
+    match registry.parse(&path) {
+        Ok(result) => Ok(serde_json::json!({
+            "uid": uid,
+            "path": path_str,
+            "parser": result.parser_name,
+            "content": result.content,
+            "exists": true,
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "uid": uid,
+            "path": path_str,
+            "parser": "",
+            "content": format!("（无法解析：{e}）"),
+            "exists": true,
+        })),
+    }
 }
 
 /// 列出所有索引根：从 state.index_dirs 读，对每个打开 tree_index 取信息。

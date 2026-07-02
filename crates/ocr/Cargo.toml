@@ -8,9 +8,11 @@ description = "pivotsearch OCR 层：Tesseract 集成（feature gate 可选）"
 
 [dependencies]
 pivotsearch-contracts = { workspace = true }
+# kreuzberg-tesseract + image 仅在 ocr feature 启用时引入
+kreuzberg-tesseract = { version = "4.9.9", optional = true }
+image = { version = "0.25", optional = true }
 
 [features]
 default = []
 # OCR 为可选能力，默认不编译。cargo build --features ocr 启用。
-# Phase 4 引入 kreuzberg-tesseract 依赖（feature gate）
-ocr = []
+ocr = ["dep:kreuzberg-tesseract", "dep:image"]

@@ -139,3 +139,26 @@
     - { severity: 次要, item: "Tauri UI 实际运行未验证", root_cause: "sandbox 无 GUI" }
     - { severity: 次要, item: "OCR 未集成", root_cause: "需 Tesseract 库" }
   coverage_pct: 97
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 4 审计
+# ═══════════════════════════════════════════════════════════════
+- iteration: 4
+  date: 2026-07-02T21:00:00Z
+  intended:
+    - "OCR kreuzberg-tesseract 集成"
+    - "get_preview 完整实现"
+    - "PDFium @rpath 配置"
+    - "Tauri UI 运行验证"
+  delivered:
+    - "✅ OCR feature gate 编译路径打通（kreuzberg-tesseract optional + image 解码 + TesseractAPI）"
+    - "✅ get_preview 完整实现（重新解析原文件）"
+    - "✅ PDFium 三端获取脚本 fetch-pdfium.sh"
+    - "✅ tauri.conf.json bundle 配置（macOS/resources/externalBin 占位）"
+    - "⚠️ OCR 运行时需语言包（chi_sim.traineddata 未下载）"
+    - "⚠️ Tauri UI 实际运行需 GUI 环境"
+  gaps:
+    - { severity: 次要, item: "OCR 真实图片测试未做（需语言包 + 含文字的测试图片）", root_cause: "需 chi_sim.traineddata 语言包" }
+    - { severity: 次要, item: "Tauri UI 实际运行未验证", root_cause: "sandbox 无 GUI" }
+    - { severity: 次要, item: "PDFium dylib 随 app 打包 @rpath 未实际配置", root_cause: "需 tauri build 实测" }
+  coverage_pct: 98

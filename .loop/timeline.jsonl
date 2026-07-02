@@ -31,3 +31,6 @@
 {"ts":"2026-07-02T20:30:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 3 ③ PDFium 验证 done: dylib 方案，PDF 端到端解析成功（搜 Revenue 命中 test.pdf）"}
 {"ts":"2026-07-02T20:30:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 3 ② docx 测试 done: 手动构造 OOXML，DocxParser 端到端解析+高亮"}
 {"ts":"2026-07-02T20:30:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Iteration 3 DONE: 对抗门 6 项全过(含 PDF+docx 端到端). 覆盖率 96%->97%. 剩余 gap 纯 GUI/Tesseract 环境依赖"}
+{"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 4 ⑤ OCR 编译集成 done: kreuzberg-tesseract feature gate 打通（cmake 构建 Tesseract C++）"}
+{"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 4 get_preview done: 重新解析原文件完整实现 + PDFium fetch 脚本"}
+{"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Iteration 4 DONE: 对抗门全过(workspace+src-tauri+OCR feature+42测试+净室+依赖方向). 覆盖率 97%->98%"}
