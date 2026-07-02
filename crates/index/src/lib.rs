@@ -1,14 +1,16 @@
 //! # pivotsearch-index
 //!
-//! 索引层：Tantivy schema + Document 组装 + 增量算法 + tree_index（SQLite）。
+//! 索引层：Tantivy schema + Document 组装 + uid 算法 +（Phase 2）增量算法 + tree_index。
 //!
-//! Phase 0 占位：具体实现见 Phase 1 (T1/T4)。
+//! 依赖方向：只依赖 contracts，不依赖其他能力 crate。
 
-// Phase 1 将实现：
-// - schema.rs        Tantivy schema 八字段定死 + uid 算法
-// - doc_builder.rs   Document 组装（content 追加 title/author/文件名）
+pub mod schema;
+pub mod tokenizer;
+pub mod doc_builder;
+
+pub use schema::{build_schema, SchemaFields, field_names};
+pub use doc_builder::{build_document, compute_uid, extract_path};
+
 // Phase 2 将实现：
 // - incremental.rs   mtime 比对 + unseenDocs diff + 归档跳过
 // - tree_index.rs    SQLite 持久化 tree_index
-
-pub use pivotsearch_contracts::{Indexer, IndexAction, UpdateResult, IndexedDoc};

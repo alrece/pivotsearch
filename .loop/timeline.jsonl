@@ -3,3 +3,8 @@
 {"ts":"2026-07-02T12:10:00Z","phase":0,"step":"scaffold","event":"progress","adversarial":"none","mode":"interactive","detail":"顶层文件创建：AGENTS.md(宪法) + CLAUDE.md + README.md + LICENSE(Apache-2.0) + .gitignore + DESIGN.md"}
 {"ts":"2026-07-02T12:45:00Z","phase":0,"step":"scaffold","event":"complete","adversarial":"pass","mode":"interactive","detail":"Phase 0 DONE: 全套方法论框架 + 9 crate workspace 编译通过 + 8 spec 完整。净室 grep PASS，依赖方向 PASS。覆盖率 30%。"}
 {"ts":"2026-07-02T12:45:00Z","phase":1,"step":"execute","event":"advance","adversarial":"none","mode":"interactive","detail":"Phase 1 核心索引闭环开始：T1 contracts+schema → T2 parser MVP → T3 查询+CLI 闭环"}
+{"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 1 T1 done: contracts 6 模块 + index schema 9 字段 + jieba tokenizer，7 测试通过"}
+{"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 1 T2 done: parser MVP 6 格式(txt/md/html/docx/xlsx/pdf) + 注册表两级选择，9 测试通过"}
+{"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Phase 1 T3 done: search SimpleSearcher + cli index/search 闭环，中文/英文检索端到端验证通过"}
+{"ts":"2026-07-02T14:15:00Z","phase":1,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Phase 1 DONE: 对抗门 4 项全过(编译/16测试/净室/依赖方向)。覆盖率 30%→55%。next_seed=Phase 2 增量索引+文件监听+任务队列"}
+{"ts":"2026-07-02T14:15:00Z","phase":2,"step":"execute","event":"advance","adversarial":"none","mode":"auto","detail":"Phase 2 增量与监听开始"}

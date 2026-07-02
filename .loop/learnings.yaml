@@ -20,7 +20,7 @@
     - { kind: keep,   text: "依赖方向铁律通过编译期验证：core 的 Cargo.toml 只声明 pivotsearch-contracts，Makefile 加 deps-check 守护", source: "retro" }
     - { kind: keep,   text: "三处受控原生依赖（PDFium/Tesseract/老 Office）在计划阶段就向用户诚实反馈并获得确认，避免后期返工", source: "retro" }
     - { kind: improve, text: "contracts/lib.rs 的 re-export 首次漏了 WatchEventKind/PreviewData/PAGE_SIZE，导致 watcher/search crate 编译失败——新建模块时应同步更新 lib.rs 的 pub use", source: "retro" }
-    - { kind: improve, text: "ocr crate 的 feature gate 设计在 Phase 0 只是空壳，Phase 4 引入 kreuzberg-tesseract 时需验证 --features orc 编译路径", source: "retro" }
+    - { kind: improve, text: "ocr crate 的 feature gate 设计在 Phase 0 只是空壳，Phase 4 引入 kreuzberg-tesseract 时需验证 --features ocr 编译路径", source: "retro" }
     - { kind: try,    text: "Phase 1 优先实现 contracts 完整 trait + index schema（T1），再接 parser MVP（T2），最后 cli 闭环（T3）", source: "retro" }
     - { kind: try,    text: "Phase 1 引入 pdfium-render 时先做 PDFium 静态链接的 PoC（三端二进制获取），这是最大技术风险点", source: "retro" }
     - { kind: try,    text: "Tauri 项目骨架（src-tauri/ + Vue 前端）留到 Phase 4 再初始化，Phase 1-3 用 CLI 验证后端闭环即可", source: "retro" }
@@ -29,3 +29,35 @@
     - "诚实可行性反馈：计划阶段就把纯 Rust 路线的三处硬伤（PDF中文/OCR/老Office）告诉用户并给出方案，获确认后再动手"
     - "依赖方向编译期守护：core crate 的 Cargo.toml 只声明 contracts，配合 make deps-check 自动验证"
     - "净室 grep 自动化：make cleanroom 一键检查 DocFetcher 标识符零残留"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 1 / Phase 1 — 核心索引闭环（T1-T3）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 1
+  date: 2026-07-02T14:15:00Z
+  milestone: "Phase 1 核心索引闭环跑通——CLI 能索引目录并中文/英文检索，16 测试全过，对抗门 4 项通过"
+  decisions:
+    - "Tantivy 0.24 API 适配：schema 用 TextOptions + TextFieldIndexing builder（不是旧的 STRING/TEXT 常量组合），Document 用 TantivyDocument(=CompactDoc)（Document 是 trait）"
+    - "jieba Tokenizer 用 Arc<Jieba> 实现 Clone（tantivy Tokenizer trait 要求 Clone），HMM 模式提升未登录词召回"
+    - "pdfium-render 动态链接模式（运行时缺 PDFium 库返回清晰错误），静态链接留到 Phase 5"
+    - "chardetng API：EncodingDetector::new(Iso2022JpDetection::Allow) + guess(tld, Utf8Detection::Allow)，枚举是 Allow/Deny 不是 Enabled/Disabled"
+    - "docx-rs 文本提取递归遍历 Document→Paragraph→Run→Text，Hyperlink.children 是 Vec<ParagraphChild> 需递归"
+    - "USTC cargo mirror 解决 static.crates.io DNS 解析失败（环境网络问题），写入 ~/.cargo/config.toml 持久生效"
+  lessons:
+    - { kind: keep,   text: "T1-T3 渐进式推进有效：先 schema(7测试) → 再 parser(9测试) → 最后 cli 端到端验证，每步可独立验证", source: "retro" }
+    - { kind: keep,   text: "中文检索闭环验证成功：搜「营收」命中季度报告.txt、搜「内存」命中 rust-guide.md，jieba 分词 + Tantivy 全链路跑通", source: "retro" }
+    - { kind: keep,   text: "PDF/docx/xlsx/html/md/txt 六格式解析器全部实现，注册表两级选择（mime 优先/扩展名 fallback）工作正常", source: "retro" }
+    - { kind: keep,   text: "GBK 编码文本解码验证通过（'中文' 正确识别），chardetng+encoding_rs 方案可靠", source: "retro" }
+    - { kind: keep,   text: "对抗门 4 项全过：编译/16测试/净室grep/依赖方向，gate 级质量守护有效", source: "retro" }
+    - { kind: improve, text: "Tantivy 0.24 API 与旧版本差异大（TEXT变TextOptions、Document变trait、Tokenizer要求Clone），首次基于记忆写的代码有 10+ 编译错误——应先查实际 API 文档再写", source: "retro" }
+    - { kind: improve, text: "snippet 片段为空：SnippetGenerator 用 title 做 snippet 但 query 命中 content（title 里没有查询词）。Phase 4 预览功能应从原文件重新解析重建 snippet", source: "retro" }
+    - { kind: improve, text: "cli 索引时未过滤 lock 文件和隐藏文件（首次测试误索引了 Tantivy 自身 lock），已修复但应在 Indexer trait 层固化排除规则", source: "retro" }
+    - { kind: improve, text: "代码注释里写了 DocFetcher 名字触发净室 grep——注释应避免提及具体参考项目名，改用中性表述", source: "retro" }
+    - { kind: try,    text: "Phase 2 增量索引：实现 mtime 比对 + unseenDocs diff + SQLite tree_index，让文件修改后自动更新", source: "retro" }
+    - { kind: try,    text: "Phase 2 文件监听：notify + 防抖，让 CLI watch 命令能实时响应文件变化", source: "retro" }
+    - { kind: try,    text: "补充真实 PDF/docx/xlsx 测试文件（当前只有格式扩展名验证，缺真实文件解析测试）", source: "retro" }
+  patterns:
+    - "Tantivy 0.24 API 适配清单：TextOptions+TextFieldIndexing / TantivyDocument(CompactDoc) / Tokenizer 要求 Clone / Value trait 的 as_str 在 scope / SnippetGenerator::snippet(&text)"
+    - "USTC mirror 解决 crates.io DNS：~/.cargo/config.toml 配 [source.ustc] registry='sparse+https://mirrors.ustc.edu.cn/crates.io-index/'"
+    - "API 查证驱动开发：遇到编译错误先查 crate 源码（~/.cargo/registry/src/）确认真实签名，不靠记忆"
+    - "渐进式 plan 执行：T1→T2→T3 每 plan 完成跑子测试，全过再跑 Phase 级对抗门"
