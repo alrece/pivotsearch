@@ -12,7 +12,7 @@ importers:
         specifier: 2.11.1
         version: 2.11.1
       '@tauri-apps/plugin-dialog':
-        specifier: ^2.7.1
+        specifier: 2.7.1
         version: 2.7.1
       element-plus:
         specifier: ^2.7.0

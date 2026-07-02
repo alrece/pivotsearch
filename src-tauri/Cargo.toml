@@ -25,9 +25,9 @@ tantivy = "0.24"
 parking_lot = "0.12"
 walkdir = "2"
 tracing = "0.1"
-tauri-plugin-dialog = "2.0.0-rc.8"
-tauri-plugin-clipboard-manager = "2.1.0-beta.7"
-tauri-plugin-opener = "2.5.4"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-opener = "2"
 
 [features]
 default = []
