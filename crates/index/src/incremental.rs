@@ -14,7 +14,7 @@ use crate::schema::SchemaFields;
 use crate::tree_index::{IndexedFile, TreeIndex};
 use pivotsearch_contracts::{IndexAction, ParserRegistry, PivotsearchError, Result, UpdateResult};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tantivy::{IndexWriter, Term};
 
 /// 增量索引器的配置。
@@ -139,7 +139,7 @@ pub fn update_incremental(
     }
 
     // unseen 剩余 = 磁盘上已删除的
-    for (_, file) in &unseen {
+    for file in unseen.values() {
         delete_doc(writer, fields, &file.uid)?;
         tree_index.delete_file(&file.uid)?;
         stats.deleted += 1;

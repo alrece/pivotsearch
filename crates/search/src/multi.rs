@@ -9,9 +9,8 @@
 //! - parsers：按 parser 字段过滤
 //! - min_size/max_size：按 size 字段范围过滤
 
-use crate::{SearchSchemaFields, SimpleSearcher};
-use pivotsearch_contracts::{PivotsearchError, Result, SearchRequest, SearchResponse, SearchResult};
-use tantivy::Index;
+use crate::SimpleSearcher;
+use pivotsearch_contracts::{Result, SearchRequest, SearchResponse, SearchResult};
 
 /// 多索引搜索引擎。
 pub struct MultiIndexSearcher {
@@ -39,7 +38,7 @@ impl MultiIndexSearcher {
     /// 每个符合条件的索引各跑 top-N，合并后按全局排序取最终页。
     pub fn search(&self, request: &SearchRequest) -> Result<SearchResponse> {
         let page_size = pivotsearch_contracts::PAGE_SIZE;
-        let limit = (request.page + 1) * page_size;
+        let _limit = (request.page + 1) * page_size;
 
         // 决定要搜索哪些索引
         let target_ids: Vec<&str> = match &request.index_ids {

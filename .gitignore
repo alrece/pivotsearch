@@ -49,3 +49,7 @@ desktop.ini
 .loop/STATE.yaml.tmp
 # PDFium 原生库（按需下载，不入库）
 native/
+# Tesseract 语言包（按需下载）
+native/tessdata/
+# Tauri 打包产物
+src-tauri/target/

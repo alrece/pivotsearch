@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// 搜索请求。
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct SearchRequest {
     /// 查询字符串（支持 term/phrase/boolean/wildcard，AND 默认）。
     pub query: String,
@@ -21,18 +22,6 @@ pub struct SearchRequest {
     pub page: usize,
 }
 
-impl Default for SearchRequest {
-    fn default() -> Self {
-        Self {
-            query: String::new(),
-            index_ids: None,
-            parsers: None,
-            min_size: None,
-            max_size: None,
-            page: 0,
-        }
-    }
-}
 
 /// 搜索响应。
 #[derive(Debug, Clone, Serialize, Deserialize)]

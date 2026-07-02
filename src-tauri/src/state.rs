@@ -1,8 +1,6 @@
 //! 引擎全局状态（跨命令共享）。
 
-use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// 引擎状态：管理所有索引根的 searcher 和 tree_index。
 ///
@@ -26,4 +24,3 @@ impl Default for EngineState {
     }
 }
 
-pub type SharedState = Arc<Mutex<EngineState>>;

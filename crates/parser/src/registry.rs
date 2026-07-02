@@ -17,9 +17,9 @@ impl ParserRegistryImpl {
     /// 用全部内置 parser 构造注册表。
     pub fn with_builtin_parsers() -> Self {
         let parsers: Vec<Box<dyn Parser>> = vec![
-            Box::new(crate::text::TextParser::default()),
+            Box::new(crate::text::TextParser),
             Box::new(crate::markdown::MarkdownParser),
-            Box::new(crate::html::HtmlParser::default()),
+            Box::new(crate::html::HtmlParser),
             Box::new(crate::docx::DocxParser),
             Box::new(crate::xlsx::SpreadsheetParser),
             Box::new(crate::epub::EpubParser),
@@ -43,7 +43,7 @@ impl ParserRegistryImpl {
         let ext = ext.as_deref()?;
         self.parsers
             .iter()
-            .find(|p| p.extensions().iter().any(|e| *e == ext))
+            .find(|p| p.extensions().contains(&ext))
             .map(|p| p.as_ref())
     }
 
@@ -80,7 +80,7 @@ impl ParserRegistryImpl {
                     .unwrap_or(false);
                 let ext_match = file_ext
                     .as_deref()
-                    .map(|fe| p.extensions().iter().any(|pe| *pe == fe))
+                    .map(|fe| p.extensions().contains(&fe))
                     .unwrap_or(false);
                 // mime 或扩展名任一匹配即为候选
                 if mime_match || ext_match {

@@ -10,7 +10,7 @@
 //! - 用完清理临时目录
 
 use pivotsearch_contracts::{ParseResult, ParserRegistry, PivotsearchError, Result};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// 判断文件是否为支持的归档类型。
 pub fn is_archive(path: &Path) -> bool {

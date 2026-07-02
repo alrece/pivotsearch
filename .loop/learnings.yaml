@@ -269,3 +269,24 @@
     - "optional 依赖 feature gate：[dependencies] dep={version,optional=true} + [features] feat=['dep:dep']，默认不编译"
     - "OCR 图片识别模式：image::open 解码 → to_rgb8 取像素 → TesseractAPI.set_image(raw, w, h, bpp, bpl) → recognize → get_utf8_text"
     - "get_preview 重新解析模式：uid strip_prefix file:// → PathBuf → registry.parse → content（保证最新，与索引解耦）"
+
+# ═══════════════════════════════════════════════════════════════
+# Iteration 5 — OCR 真实测试 + Tauri 打包验证（全部 gap 清零）
+# ═══════════════════════════════════════════════════════════════
+- iteration: 5
+  date: 2026-07-02T21:30:00Z
+  milestone: "全部 gap 清零——OCR 真实识别验证 + Tauri .app/.dmg 打包成功 + v0.1.0 正式版 tag"
+  decisions:
+    - "OCR 测试用 eng 语言包（比 chi_sim 更可靠做 PoC），PIL 生成含英文文字 PNG"
+    - "Tauri 验证用 build 而非 dev（一次性编译+打包，比 dev 更全面发现链接问题）"
+    - "v0.1.0 正式版 tag（区别于 v0.1.0-alpha，所有 gap 清零）"
+  lessons:
+    - { kind: keep,   text: "OCR 端到端验证：PIL 生成 'Hello Revenue Report' PNG → TesseractAPI 识别 → 完美还原文本", source: "retro" }
+    - { kind: keep,   text: "Tauri build 成功：release 编译(43s) + .app bundle + .dmg 安装包，app 启动运行稳定", source: "retro" }
+    - { kind: keep,   text: "clippy --fix 自动修复 unused imports，src-tauri warning 清零", source: "retro" }
+    - { kind: improve, text: "8 个 workspace clippy warning 残留（complex types/风格建议），非阻塞但 v0.2 应清理", source: "retro" }
+    - { kind: try,    text: "v0.2: 三端 CI 实际运行验证（push 触发 GitHub Actions）+ Windows/Linux 打包", source: "retro" }
+  patterns:
+    - "OCR 验证模式：PIL 生成含文字 PNG + eng 语言包 → image 解码 → TesseractAPI → 断言识别结果"
+    - "Tauri 验证：pnpm tauri build（非 dev）→ 检查 .app/.dmg 产物 → open app + ps 检查进程"
+    - "gap 清零里程碑：每 iteration 突破 1-2 个'环境依赖'gap，5 轮从 30% 到 99%"

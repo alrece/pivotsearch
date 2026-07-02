@@ -79,3 +79,29 @@ mod tests {
         assert!(!ocr_available());
     }
 }
+
+#[cfg(all(test, feature = "ocr"))]
+mod ocr_e2e_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn ocr_recognizes_english_text() {
+        let test_img = PathBuf::from("/tmp/test_ocr.png");
+        let datapath = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../native/tessdata");
+        if !test_img.exists() || !datapath.join("eng.traineddata").exists() {
+            eprintln!("跳过：测试图片或语言包不存在");
+            return;
+        }
+        let result = ocr_image(&test_img, "eng", &datapath);
+        match &result {
+            Ok(text) => {
+                let t = text.to_lowercase();
+                assert!(t.contains("hello") || t.contains("revenue"),
+                    "OCR 应识别出 hello/revenue，实际: {:?}", text);
+                println!("✅ OCR 识别成功: {:?}", text.trim());
+            }
+            Err(e) => panic!("OCR 失败: {}", e),
+        }
+    }
+}

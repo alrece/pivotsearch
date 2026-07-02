@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager, State};
 
 use pivotsearch_contracts::{IndexAction, ParserRegistry, SearchRequest};
-use pivotsearch_index::{build_schema, compute_uid, incremental::*, tree_index::*};
+use pivotsearch_index::{build_schema, incremental::*, tree_index::*};
 use pivotsearch_parser::ParserRegistryImpl;
 use pivotsearch_search::{MultiIndexSearcher, SearchSchemaFields, SimpleSearcher};
 use tantivy::Index;

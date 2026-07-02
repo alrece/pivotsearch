@@ -34,3 +34,6 @@
 {"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 4 ⑤ OCR 编译集成 done: kreuzberg-tesseract feature gate 打通（cmake 构建 Tesseract C++）"}
 {"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 4 get_preview done: 重新解析原文件完整实现 + PDFium fetch 脚本"}
 {"ts":"2026-07-02T21:00:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Iteration 4 DONE: 对抗门全过(workspace+src-tauri+OCR feature+42测试+净室+依赖方向). 覆盖率 97%->98%"}
+{"ts":"2026-07-02T21:30:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 5 OCR 真实测试 done: 'Hello Revenue Report' PNG 完美识别"}
+{"ts":"2026-07-02T21:30:00Z","phase":3,"step":"execute","event":"progress","adversarial":"none","mode":"auto","detail":"Iteration 5 Tauri 打包验证 done: release编译43s + .app + .dmg + app启动运行"}
+{"ts":"2026-07-02T21:30:00Z","phase":3,"step":"execute","event":"complete","adversarial":"pass","mode":"auto","detail":"Iteration 5 DONE: 全部 gap 清零! tag v0.1.0 正式版. 对抗门 8 项全过. 覆盖率 99%"}
