@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@tauri-apps/api':
-        specifier: ^2.0.0
+        specifier: 2.11.1
         version: 2.11.1
       '@tauri-apps/plugin-dialog':
         specifier: ^2.7.1
@@ -25,7 +25,7 @@ importers:
         version: 3.5.39(typescript@5.9.3)
     devDependencies:
       '@tauri-apps/cli':
-        specifier: ^2.0.0
+        specifier: 2.11.4
         version: 2.11.4
       '@vitejs/plugin-vue':
         specifier: ^5.0.0
