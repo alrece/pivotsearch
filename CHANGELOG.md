@@ -7,6 +7,23 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-03
+
+### Changed
+- **应用图标重做**：采用品牌绿色 3D "PS" 图标，套用 macOS squircle（连续曲率圆角，半径 22.4%）规范
+  - 50 个图标文件全部重新生成（macOS `.icns` / Windows `.ico` / Linux PNG / iOS 18 张 / Android 15 张）
+  - 1px 极窄白边，PS 字母几乎顶满圆角画板
+  - 圆角边缘抗锯齿处理（Gaussian 平滑）
+  - 三端图标风格统一
+
+### Fixed
+- 修复 dev 模式下图标未正确显示 squircle 圆角的问题（圆角半径参数从 13% 修正为标准 22.4%）
+
+## [0.3.1] - 2026-07-03
+
+### Fixed
+- macOS ad-hoc 签名修复（CI 中 `codesign --force --deep --sign -`）
+
 ## [0.3.0] - 2026-07-03
 
 ### Added

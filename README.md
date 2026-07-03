@@ -159,6 +159,8 @@ pnpm tauri dev                # 桌面端热重载开发
 
 ## 项目状态
 
+**v0.4.0** — macOS squircle 规范应用图标 + 品牌绿色 3D "PS" 视觉重做。
+
 **v0.3.0** — 三端安装包 + psearch CLI + 进度条 + 索引详情 + 大小写敏感搜索。
 
 详见 [CHANGELOG.md](CHANGELOG.md)。
