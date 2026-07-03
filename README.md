@@ -57,6 +57,10 @@
 | Windows | `.msi` / `.exe` |
 | Linux | `.deb` / `.AppImage` |
 
+> **macOS 用户注意**：由于本应用未使用 Apple 开发者证书签名，首次打开可能提示"无法验证开发者"。解决方法：
+> - 右键点击 app → 选择「打开」→ 点击「打开」确认
+> - 或在终端运行：`sudo xattr -rd com.apple.quarantine /Applications/pivotsearch.app`
+
 ### 从源码构建
 
 ```bash
