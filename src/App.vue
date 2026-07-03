@@ -19,9 +19,12 @@ import {
   type IndexProgress,
   type PreviewData,
 } from "./api";
+import { useI18n } from "./composables/useI18n";
+
+const { locale, t, toggleLocale } = useI18n();
 
 // ═══ 面板宽度（可拖动分隔栏）═══
-const panelWidth = ref(50); // 左侧结果列表宽度百分比
+const panelWidth = ref(50); // result-list width as a percentage
 let isDragging = false;
 
 function startDrag() {
@@ -76,24 +79,24 @@ const indexDetail = ref<any>(null);
 let unlistenProgress: (() => void) | null = null;
 
 // ═══ 文件类型筛选 ═══
-const filterType = ref(""); // 空=全部
+const filterType = ref(""); // empty = all
 // ═══ 大小写敏感 ═══
 const caseSensitive = ref(false);
-const typeOptions = [
-  { label: "全部", value: "" },
+const typeOptions = computed(() => [
+  { label: t("typeAll"), value: "" },
   { label: "PDF", value: "pdf" },
   { label: "Word", value: "docx" },
   { label: "Excel", value: "xlsx" },
   { label: "PPT", value: "pptx" },
   { label: "Markdown", value: "md" },
   { label: "HTML", value: "html" },
-  { label: "文本", value: "txt" },
-];
+  { label: t("typeText"), value: "txt" },
+]);
 
 // ═══ 搜索范围（索引下拉）═══
-const searchScope = ref(""); // 空=全部索引
+const searchScope = ref(""); // empty = all indexes
 const scopeOptions = computed(() => [
-  { label: "全部范围", value: "" },
+  { label: t("allScopes"), value: "" },
   ...indexes.value.map((idx) => ({
     label: idx.display_name || idx.path,
     value: idx.id,
@@ -130,7 +133,7 @@ async function doSearch() {
     selectedIndex.value = -1;
     previewData.value = null;
   } catch (e) {
-    console.error("搜索失败", e);
+    console.error("search failed", e);
     results.value = [];
   } finally {
     loading.value = false;
@@ -147,7 +150,7 @@ async function selectResult(index: number) {
   try {
     previewData.value = await getPreview(result.uid);
   } catch (e) {
-    console.error("预览失败", e);
+    console.error("preview failed", e);
     previewData.value = null;
   } finally {
     previewLoading.value = false;
@@ -192,9 +195,9 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-// ═══ snippet 高亮（结果列表）═══
+// ── snippet highlighting (result list) ──
 function renderSnippet(snippet: string): string {
-  // snippet 已经含 <b> 标签（Rust 端高亮），直接转 <mark>
+  // snippet already contains <b> tags (highlighted by Rust), convert to <mark>
   return snippet.replace(/<b>/g, '<mark>').replace(/<\/b>/g, "</mark>");
 }
 
@@ -203,9 +206,9 @@ function renderSnippet(snippet: string): string {
 async function onCopyPath(path: string) {
   try {
     await copyToClipboard(path);
-    ElMessage.success("路径已复制");
+    ElMessage.success(t("pathCopied"));
   } catch (e) {
-    ElMessage.error("复制失败");
+    ElMessage.error(t("copyFailed"));
   }
 }
 
@@ -213,7 +216,7 @@ async function onOpenFolder(path: string) {
   try {
     await openInFolder(path);
   } catch (e) {
-    ElMessage.error("打开目录失败");
+    ElMessage.error(t("openFolderFailed"));
   }
 }
 
@@ -222,7 +225,7 @@ async function onIndexDblClick(row: IndexInfo) {
     indexDetail.value = await getIndexDetails(row.id);
     detailDialog.value = true;
   } catch (e) {
-    ElMessage.error("获取详情失败");
+    ElMessage.error(t("getDetailsFailed"));
   }
 }
 
@@ -231,7 +234,7 @@ async function onInstallCli() {
     const msg = await installCli();
     ElMessage.success(msg);
   } catch (e) {
-    ElMessage.error(`安装失败: ${e}`);
+    ElMessage.error(t("installFailed", { msg: String(e) }));
   }
 }
 
@@ -268,7 +271,7 @@ async function refreshIndexes() {
   try {
     indexes.value = await listIndexes();
   } catch (e) {
-    console.error("获取索引失败", e);
+    console.error("failed to list indexes", e);
   }
 }
 
@@ -278,13 +281,13 @@ async function browseFolder() {
     const selected = await openDialog({
       directory: true,
       multiple: false,
-      title: "选择要索引的目录",
+      title: t("selectIndexDir"),
     });
     if (selected) {
       newPath.value = selected as string;
     }
   } catch (e) {
-    console.error("目录选择失败", e);
+    console.error("folder selection failed", e);
   }
 }
 
@@ -294,10 +297,10 @@ async function onAddIndex() {
     isIndexing.value = true;
     await addIndex(newPath.value);
     newPath.value = "";
-    // 进度由 onIndexProgress 回调驱动，不再用 setTimeout
+    // Progress is driven by the onIndexProgress callback; no setTimeout here.
   } catch (e) {
     isIndexing.value = false;
-    ElMessage.error(`添加失败: ${e}`);
+    ElMessage.error(t("addFailed", { msg: String(e) }));
   }
 }
 
@@ -314,10 +317,10 @@ async function onRebuildIndex(id: string) {
   try {
     isIndexing.value = true;
     await rebuildIndex(id);
-    // 进度由 onIndexProgress 回调驱动
+    // Progress is driven by the onIndexProgress callback.
   } catch (e) {
     isIndexing.value = false;
-    ElMessage.error(`重建失败: ${e}`);
+    ElMessage.error(t("rebuildFailed", { msg: String(e) }));
   }
 }
 
@@ -337,7 +340,7 @@ onMounted(async () => {
       isIndexing.value = false;
       indexProgress.value = null;
       progressMsg.value = "";
-      ElMessage.success("索引完成");
+      ElMessage.success(t("indexComplete"));
       refreshIndexes();
     } else if (p.phase === "error") {
       isIndexing.value = false;
@@ -365,7 +368,7 @@ onMounted(async () => {
       isIndexing.value = false;
       indexProgress.value = null;
       progressMsg.value = "";
-      ElMessage.success("索引完成");
+      ElMessage.success(t("indexComplete"));
       refreshIndexes();
     } else if (p.phase === "error") {
       isIndexing.value = false;
@@ -391,7 +394,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app" @keydown="onKeydown" tabindex="0">
-    <!-- ═══ 顶部搜索栏 ═══ -->
+    <!-- ── Top search bar ── -->
     <header class="topbar">
       <div class="logo">
         <span class="logo-text">PivotSearch</span>
@@ -399,13 +402,13 @@ onUnmounted(() => {
       <div class="search-input">
         <el-input
           v-model="query"
-          placeholder="输入关键词搜索文件内容..."
+          :placeholder="t('searchPlaceholder')"
           size="large"
           @input="onSearchInput"
           clearable
         />
       </div>
-      <el-select v-model="searchScope" placeholder="范围" size="large" class="scope-select">
+      <el-select v-model="searchScope" :placeholder="t('scope')" size="large" class="scope-select">
         <el-option
           v-for="opt in scopeOptions"
           :key="opt.value"
@@ -413,7 +416,7 @@ onUnmounted(() => {
           :value="opt.value"
         />
       </el-select>
-      <el-select v-model="filterType" placeholder="类型" size="large" class="type-select">
+      <el-select v-model="filterType" :placeholder="t('type')" size="large" class="type-select">
         <el-option
           v-for="opt in typeOptions"
           :key="opt.value"
@@ -421,7 +424,7 @@ onUnmounted(() => {
           :value="opt.value"
         />
       </el-select>
-      <el-tooltip :content="caseSensitive ? '大小写敏感：已开启' : '大小写敏感：已关闭'" placement="bottom">
+      <el-tooltip :content="caseSensitive ? t('caseSensitiveOn') : t('caseSensitiveOff')" placement="bottom">
         <button
           class="case-toggle"
           :class="{ active: caseSensitive }"
@@ -431,52 +434,55 @@ onUnmounted(() => {
         </button>
       </el-tooltip>
       <el-button size="large" type="primary" @click="doSearch" :loading="loading">
-        搜索
+        {{ t('search') }}
       </el-button>
       <el-button size="large" @click="showIndexDialog = true">
-        索引管理
+        {{ t('indexManagement') }}
       </el-button>
+      <button class="lang-toggle" :title="locale === 'en' ? '中文' : 'English'" @click="toggleLocale">
+        {{ locale === 'en' ? '中' : 'EN' }}
+      </button>
     </header>
 
-    <!-- ═══ 主体：左结果列表 + 右预览面板 ═══ -->
+    <!-- ── Main: left result list + right preview panel ── -->
     <main class="main-body">
-      <!-- 无索引引导 -->
+      <!-- No-index welcome -->
       <div v-if="noIndexes && !hasSearched" class="welcome-screen">
         <div class="welcome-content">
           <div class="welcome-icon">📁</div>
-          <h2>欢迎使用 pivotsearch</h2>
-          <p>跨平台本地全文搜索 · 支持 PDF/Word/Excel/Markdown 等 9 种格式</p>
+          <h2>{{ t('welcomeTitle') }}</h2>
+          <p>{{ t('welcomeDesc') }}</p>
           <el-button type="primary" size="large" @click="showIndexDialog = true">
-            添加索引目录开始使用
+            {{ t('addIndexToStart') }}
           </el-button>
         </div>
       </div>
 
-      <!-- 搜索结果布局 -->
+      <!-- Search results layout -->
       <div v-else class="result-layout">
-        <!-- 左：结果列表 -->
+        <!-- Left: result list -->
         <div class="result-panel" :style="{ flex: '0 0 ' + panelWidth + '%' }">
-          <!-- 结果头部 -->
+          <!-- Result header -->
           <div class="result-header" v-if="hasSearched">
-            <span v-if="loading">搜索中...</span>
-            <span v-else>找到 {{ totalHits }} 个结果</span>
+            <span v-if="loading">{{ t('searching') }}</span>
+            <span v-else>{{ t('resultsFound', { n: totalHits }) }}</span>
             <span class="result-filter" v-if="filterType">
-              （已筛选 .{{ filterType }}）
+              {{ t('filteredSuffix', { ext: filterType }) }}
             </span>
             <span v-if="isIndexing" class="indexing-hint">
-              ⚠ 索引正在构建中，搜索结果可能不完整
+              {{ t('indexingWarning') }}
             </span>
           </div>
 
-          <!-- 空搜索提示 -->
+          <!-- Empty search hint -->
           <div v-if="!hasSearched && !noIndexes" class="empty-search">
-            <p>🔍 在上方输入关键词开始搜索</p>
+            <p>{{ t('emptySearchHint') }}</p>
           </div>
 
-          <!-- 无结果 -->
+          <!-- No results -->
           <div v-if="noResults" class="no-results">
-            <p>未找到包含「{{ query }}」的文件</p>
-            <p class="hint">建议：尝试更短的关键词，或检查索引目录</p>
+            <p>{{ t('noResultsFound', { query }) }}</p>
+            <p class="hint">{{ t('noResultsHint') }}</p>
           </div>
 
           <!-- 结果列表 -->
@@ -504,49 +510,48 @@ onUnmounted(() => {
               <span class="meta-sep">·</span>
               <span class="meta-parser">{{ r.parser }}</span>
               <span class="meta-actions">
-                <button class="meta-btn" title="复制路径" @click.stop="onCopyPath(r.path)">📋</button>
-                <button class="meta-btn" title="打开所在目录" @click.stop="onOpenFolder(r.path)">📂</button>
+                <button class="meta-btn" :title="t('copyPath')" @click.stop="onCopyPath(r.path)">📋</button>
+                <button class="meta-btn" :title="t('openFolder')" @click.stop="onOpenFolder(r.path)">📂</button>
               </span>
             </div>
           </div>
         </div>
 
-        <!-- 可拖动分隔栏 -->
+        <!-- Draggable splitter -->
         <div
           v-if="selectedIndex >= 0 || previewLoading"
           class="splitter"
           @mousedown="startDrag"
         ></div>
 
-        <!-- 右：预览面板 -->
+        <!-- Right: preview panel -->
         <div class="preview-panel" v-if="selectedIndex >= 0 || previewLoading">
           <div class="preview-header">
             <span v-if="previewData" class="preview-title">
               {{ previewData.path.split("/").pop() }}
             </span>
-            <span v-else>加载中...</span>
-            <button class="preview-close" title="关闭预览" @click="closePreview">✕</button>
+            <span v-else>{{ t('previewLoading') }}</span>
+            <button class="preview-close" :title="t('close')" @click="closePreview">✕</button>
           </div>
           <div class="preview-content" v-loading="previewLoading">
             <div v-if="previewData && previewData.exists" class="preview-text">
               <pre v-html="renderPreviewContent(previewData.content)"></pre>
             </div>
             <div v-else-if="previewData && !previewData.exists" class="preview-error">
-              <p>📁 文件不可访问</p>
+              <p>📁 {{ t('fileNotFound') }}</p>
               <p class="hint">{{ previewData?.path }}</p>
-              <p class="hint">文件可能已被移动或删除</p>
             </div>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- ═══ 底部状态栏 ═══ -->
+    <!-- ── Bottom status bar ── -->
     <footer class="statusbar">
-      <!-- 索引进度条 -->
+      <!-- Index progress bar -->
       <template v-if="isIndexing && indexProgress">
         <span class="status-progress">
-          {{ progressMsg || "正在索引..." }}
+          {{ progressMsg || t('indexingProgress', { pct: indexProgress.pct, processed: indexProgress.processed, total: indexProgress.total }) }}
         </span>
         <el-progress
           :percentage="indexProgress?.pct ?? 0"
@@ -557,63 +562,61 @@ onUnmounted(() => {
       </template>
       <span v-else-if="progressMsg" class="status-progress">{{ progressMsg }}</span>
       <span v-else-if="indexes.length > 0" class="status-info">
-        📂 {{ indexes.length }} 个索引目录
+        📂 {{ indexes.length }} {{ t('indexManagement') }}
         <template v-for="(idx, i) in indexes" :key="idx.id">
           <span v-if="i > 0">·</span>
           {{ idx.display_name || idx.path.split("/").pop() }}
-          ({{ idx.file_count }} 文件)
+          ({{ idx.file_count }})
         </template>
       </span>
-      <span v-else class="status-info">就绪 · 添加索引目录开始使用</span>
+      <span v-else class="status-info">{{ t('ready') }} · {{ t('addIndexToStart') }}</span>
     </footer>
 
-    <!-- ═══ 索引管理对话框 ═══ -->
-    <el-dialog v-model="showIndexDialog" title="索引管理" width="600px">
+    <!-- ── Index management dialog ── -->
+    <el-dialog v-model="showIndexDialog" :title="t('indexManagementTitle')" width="600px">
       <div class="index-add">
         <el-input
           v-model="newPath"
-          placeholder="点击右侧按钮选择目录，或手动输入路径"
+          :placeholder="t('selectIndexDir')"
           @keyup.enter="onAddIndex"
         />
-        <el-button @click="browseFolder">📁 浏览</el-button>
-        <el-button type="primary" @click="onAddIndex" :disabled="isIndexing">添加</el-button>
+        <el-button @click="browseFolder">📁 {{ t('browseFolder') }}</el-button>
+        <el-button type="primary" @click="onAddIndex" :disabled="isIndexing">{{ t('addIndex') }}</el-button>
       </div>
 
       <el-table :data="indexes" stripe style="width: 100%; margin-top: 16px" @row-dblclick="onIndexDblClick">
-        <el-table-column prop="display_name" label="名称" width="150">
+        <el-table-column prop="display_name" :label="t('indexPath')" width="150">
           <template #default="{ row }">
             {{ row.display_name || row.path.split("/").pop() }}
           </template>
         </el-table-column>
-        <el-table-column prop="path" label="路径" />
-        <el-table-column prop="file_count" label="文件数" width="80" />
-        <el-table-column label="操作" width="150">
+        <el-table-column prop="path" :label="t('indexPath')" />
+        <el-table-column prop="file_count" :label="t('fileCount')" width="80" />
+        <el-table-column :label="t('actions')" width="150">
           <template #default="{ row }">
-            <el-button size="small" @click="onRebuildIndex(row.id)" :disabled="isIndexing">重建</el-button>
-            <el-button size="small" type="danger" @click="onRemoveIndex(row.id)">删除</el-button>
+            <el-button size="small" @click="onRebuildIndex(row.id)" :disabled="isIndexing">{{ t('rebuild') }}</el-button>
+            <el-button size="small" type="danger" @click="onRemoveIndex(row.id)">{{ t('remove') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="cli-install">
-        <el-button @click="onInstallCli">💻 安装命令行工具 (psearch)</el-button>
-        <span class="cli-hint">安装后可在终端/Agent 中使用 psearch 命令</span>
+        <el-button @click="onInstallCli">💻 {{ t('installCli') }} (psearch)</el-button>
       </div>
     </el-dialog>
 
-    <!-- ═══ 索引详情对话框 ═══ -->
-    <el-dialog v-model="detailDialog" title="索引详情" width="600px">
+    <!-- ── Index detail dialog ── -->
+    <el-dialog v-model="detailDialog" :title="t('indexDetailTitle')" width="600px">
       <div v-if="indexDetail" class="detail-content">
         <div class="detail-section">
-          <h4>基本信息</h4>
-          <div class="detail-row"><span>名称</span><span>{{ indexDetail.name || indexDetail.path.split("/").pop() }}</span></div>
-          <div class="detail-row"><span>路径</span><span class="mono">{{ indexDetail.path }}</span></div>
-          <div class="detail-row"><span>文件数</span><span>{{ indexDetail.file_count }}</span></div>
-          <div class="detail-row"><span>创建时间</span><span>{{ formatDate(indexDetail.created_at) }}</span></div>
+          <h4>{{ t('indexDetailTitle') }}</h4>
+          <div class="detail-row"><span>{{ t('indexPath') }}</span><span>{{ indexDetail.name || indexDetail.path.split("/").pop() }}</span></div>
+          <div class="detail-row"><span>{{ t('indexPath') }}</span><span class="mono">{{ indexDetail.path }}</span></div>
+          <div class="detail-row"><span>{{ t('fileCount') }}</span><span>{{ indexDetail.file_count }}</span></div>
         </div>
 
         <div class="detail-section">
-          <h4>文件类型分布</h4>
+          <h4>{{ t('fileTypeDistribution') }}</h4>
           <div v-for="stat in indexDetail.parser_stats" :key="stat.parser" class="detail-row">
             <span>{{ stat.parser }}</span>
             <span>
@@ -628,19 +631,19 @@ onUnmounted(() => {
         </div>
 
         <div class="detail-section">
-          <h4>最近修改的文件</h4>
+          <h4>{{ t('recentFiles') }}</h4>
           <el-table :data="indexDetail.recent_files" stripe size="small" style="width: 100%">
-            <el-table-column prop="path" label="文件路径" show-overflow-tooltip>
+            <el-table-column prop="path" :label="t('indexPath')" show-overflow-tooltip>
               <template #default="{ row }">
                 {{ row.path.split("/").pop() }}
               </template>
             </el-table-column>
-            <el-table-column label="修改时间" width="120">
+            <el-table-column :label="t('recentFiles')" width="120">
               <template #default="{ row }">
                 {{ formatDate(row.mtime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="parser" label="解析器" width="120" />
+            <el-table-column prop="parser" :label="t('type')" width="120" />
           </el-table>
         </div>
       </div>
@@ -759,6 +762,29 @@ body {
   background: var(--ps-primary);
   color: #fff;
   border-color: var(--ps-primary);
+}
+
+/* Language toggle button — shares the case-toggle visual language. */
+.lang-toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ps-border);
+  border-radius: 6px;
+  background: var(--ps-surface);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ps-text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.lang-toggle:hover {
+  border-color: var(--ps-primary);
+  color: var(--ps-primary);
 }
 
 /* ═══ 主体 ═══ */
