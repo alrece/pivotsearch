@@ -552,7 +552,7 @@ onUnmounted(() => {
         <el-progress
           :percentage="indexProgress?.pct ?? 0"
           :stroke-width="14"
-          :format="() => `${indexProgress?.processed ?? 0}/${indexProgress?.total || '?'}`"
+          :show-text="false"
           style="width: 200px; margin-left: 8px;"
         />
       </template>
