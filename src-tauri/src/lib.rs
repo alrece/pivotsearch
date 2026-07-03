@@ -482,40 +482,35 @@ async fn open_in_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
-/// 安装 psearch CLI 到系统 PATH（创建符号链接 /usr/local/bin/psearch → app 内的 sidecar）。
+/// 安装 psearch CLI 到系统 PATH。
 #[tauri::command]
 async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
-    // 找到 app bundle 内的 psearch sidecar 路径
-    let exe_dir = app
-        .path()
-        .resource_dir()
-        .map_err(|e| format!("获取资源目录失败: {e}"))?;
-    // sidecar 在 Contents/MacOS/psearch (macOS)
-    let psearch_path = exe_dir.join("../../../MacOS/psearch");
+    // 通用方式：用 current_exe 定位 sidecar（sidecar 和主程序在同一目录）
+    let exe_path = std::env::current_exe().map_err(|e| format!("无法定位可执行文件: {e}"))?;
+    let exe_dir = exe_path.parent().ok_or("无法获取可执行文件目录")?;
 
-    // 实际路径（规范化的）
-    let psearch_real = if psearch_path.exists() {
-        psearch_path
-    } else {
-        // fallback：直接用当前可执行文件同目录
-        std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .ok_or("无法定位可执行文件目录")?
-            .join("psearch")
-    };
+    // 尝试多个可能的 sidecar 文件名
+    let candidates: Vec<std::path::PathBuf> = vec![
+        exe_dir.join("psearch"),
+        exe_dir.join("psearch.exe"),
+        // macOS .app bundle 内的 Contents/MacOS/psearch
+        exe_dir.join("../../../MacOS/psearch"),
+    ];
 
-    if !psearch_real.exists() {
-        return Err("psearch CLI 未在 app bundle 中找到".to_string());
-    }
+    let psearch_real = candidates.iter()
+        .find(|p| p.exists())
+        .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+        .ok_or_else(|| format!(
+            "psearch CLI 未找到。已检查: {}\n请确认 app 是从完整安装包安装的（非绿色版）。",
+            candidates.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")
+        ))?;
 
-    // 创建符号链接 /usr/local/bin/psearch → app 内 psearch
     #[cfg(target_os = "macos")]
     {
         let link = std::path::PathBuf::from("/usr/local/bin/psearch");
         let _ = std::fs::remove_file(&link);
         std::os::unix::fs::symlink(&psearch_real, &link).map_err(|e| {
-            format!("创建符号链接失败: {e}\n请手动执行: sudo ln -sf {} {}", psearch_real.display(), link.display())
+            format!("创建符号链接失败: {e}\n请手动执行: sudo ln -sf \"{}\" \"{}\"", psearch_real.display(), link.display())
         })?;
         Ok(format!("✅ psearch 已安装到 {}\n终端可直接运行: psearch search \"关键词\" --json", link.display()))
     }
@@ -530,7 +525,23 @@ async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
-        Err("Windows 请手动将 psearch.exe 添加到 PATH".to_string())
+        // Windows: 复制 psearch.exe 到用户目录并加入 PATH
+        let home = dirs::home_dir().ok_or("无法获取用户目录")?;
+        let bin_dir = home.join(".psearch");
+        std::fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
+        let target = bin_dir.join("psearch.exe");
+        std::fs::copy(&psearch_real, &target).map_err(|e| format!("复制文件失败: {e}"))?;
+
+        // 使用 setx 将目录加入用户 PATH（setx 有 1024 字符限制）
+        let current_path = std::env::var("PATH").unwrap_or_default();
+        let bin_dir_str = bin_dir.to_string_lossy().to_string();
+        if !current_path.contains(&bin_dir_str) {
+            std::process::Command::new("setx")
+                .args(["PATH", &format!("{};{}", current_path, bin_dir_str)])
+                .output()
+                .map_err(|e| format!("加入 PATH 失败: {e}"))?;
+        }
+        Ok(format!("✅ psearch.exe 已复制到 {}\n请重新打开终端后运行: psearch search \"关键词\" --json", target.display()))
     }
 }
 
