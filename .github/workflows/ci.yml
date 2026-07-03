@@ -26,6 +26,7 @@ jobs:
       - name: 运行测试
         run: cargo test --workspace
       - name: 净室合规检查
+        shell: bash
         run: |
           if grep -ri "docfetcher\|net.sourceforge.docfetcher" crates/ src/ src-tauri/src/ 2>/dev/null | grep -v "target/"; then
             echo "❌ FAIL: 发现 DocFetcher 标识符残留"
@@ -34,6 +35,7 @@ jobs:
             echo "✅ PASS: 净室合规"
           fi
       - name: 依赖方向检查
+        shell: bash
         run: |
           if grep -E "pivotsearch-(parser|index|watcher|queue|search|ocr)" crates/core/src/*.rs crates/core/Cargo.toml 2>/dev/null; then
             echo "❌ FAIL: core 违反依赖方向铁律"
