@@ -7,6 +7,40 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-03
+
+### Added
+- **psearch CLI 工具**：供 AI Agent / CloudPivot 调用，JSON 输出
+  - `psearch search "query" --json`（Agent 核心调用接口）
+  - `psearch index/list/remove/rebuild/preview/status`
+  - 数据目录与桌面 app 共享
+  - 随 app 安装部署（Tauri sidecar）+ macOS 符号链接注册
+- **索引进度条**：新建/重建时底部显示百分比 + 文件数（如 `[Documents] 正在索引... 45%`）
+- **索引详情查看**：双击索引行弹出详情（文件类型分布 + 最近修改文件列表）
+- **大小写敏感搜索**：搜索栏 Aa 切换按钮
+- **复制路径 / 打开目录**：搜索结果每项的快捷操作按钮
+- **可拖动分隔栏**：结果列表和预览面板宽度可自由调整
+- **目录选择器**：系统原生目录选择对话框添加索引
+- **macOS ad-hoc 签名**：解决 Safari 下载 DMG 的 Gatekeeper 拦截
+
+### Changed
+- 界面仿 AnyTXT 三栏布局（顶搜索栏 + 左结果列表 + 右预览面板 + 底状态栏）
+- 品牌名统一为 PivotSearch
+- 搜索结果标题改为显示带后缀文件名
+- 三端 CI/Release workflow（含 sidecar 编译 + 产物上传）
+
+### Fixed
+- 重启后索引列表丢失（state 从磁盘恢复）
+- 重复添加同路径报错（open-or-create）
+- snippet 高亮为空（snippet_text 字段 + 手动高亮）
+- Tauri 版本 mismatch（NPM/Rust 对齐到 2.11.x）
+
+## [0.2.0] - 2026-07-02
+
+### Added
+- 三端安装包 CI（macOS .dmg / Linux .deb+.AppImage / Windows .msi+.exe）
+- GitHub Release 自动创建（含安装说明）
+
 ## [0.1.0] - 2026-07-02
 
 ### Added
@@ -48,6 +82,8 @@
 - Tauri 桌面 UI 骨架：Vue 3 前端 + #[tauri::command] 桥接
 - CI + 文档：三端矩阵 + 中文停用词调优
 
-[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.3.0
+[0.2.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.2.0
 [0.1.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.1.0
 [0.1.0-alpha]: https://github.com/alrece/pivotsearch/releases/tag/v0.1.0-alpha
