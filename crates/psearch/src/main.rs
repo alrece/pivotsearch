@@ -1,18 +1,23 @@
 //! # psearch CLI
 //!
-//! pivotsearch 命令行工具，供 AI Agent 调用。
+//! Command-line tool for pivotsearch, designed for AI Agent consumption.
 //!
-//! 用法：
-//!   psearch index <dir> [--name NAME] [--rebuild]
-//!   psearch search <query> [--json] [--index ID] [--type EXT] [--case-sensitive] [--page N] [--limit N]
-//!   psearch list [--json]
-//!   psearch remove <id>
-//!   psearch rebuild <id>
-//!   psearch preview <uid> [--json]
-//!   psearch status
-//!   psearch version
+//! Usage:
+//!   psearch [--lang <en|zh>] index <dir> [--name NAME] [--rebuild]
+//!   psearch [--lang <en|zh>] search <query> [--json] [--index ID] [--type EXT] [--case-sensitive] [--page N] [--limit N]
+//!   psearch [--lang <en|zh>] list [--json]
+//!   psearch [--lang <en|zh>] remove <id>
+//!   psearch [--lang <en|zh>] rebuild <id>
+//!   psearch [--lang <en|zh>] preview <uid> [--json]
+//!   psearch [--lang <en|zh>] status
+//!   psearch [--lang <en|zh>] version
 //!
-//! 数据目录与桌面 app 共享：~/Library/Application Support/com.pivotsearch.app/indexes/
+//! The data directory is shared with the desktop app:
+//!   ~/Library/Application Support/com.pivotsearch.app/indexes/
+//!
+//! `--lang` controls ONLY human-readable output (progress, status, error
+//! explanations). JSON payloads always use fixed English keys regardless of
+//! `--lang`, so AI Agent JSON parsing stays stable.
 
 use clap::{Parser, Subcommand};
 use pivotsearch_contracts::{IndexAction, ParserRegistry, SearchRequest};
@@ -27,86 +32,137 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tantivy::Index;
 
-// ═══════════════════════════════════════════════════════════════
-// CLI 定义
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// CLI definition
+// ====================================================================
 
 #[derive(Parser)]
-#[command(name = "psearch", version, about = "pivotsearch CLI — 本地全文搜索，供 Agent 调用")]
+#[command(
+    name = "psearch",
+    version,
+    about = "pivotsearch CLI — local full-text search for Agent use"
+)]
 struct Cli {
+    /// Output language for human-readable text (JSON keys stay English).
+    /// Default: en. Use `zh` for Chinese progress/status/error messages.
+    #[arg(long, default_value = "en", global = true)]
+    lang: String,
+
     #[command(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 添加或更新索引目录
+    /// Add or update an index directory
     Index {
-        /// 要索引的目录路径
+        /// Directory path to index
         dir: String,
-        /// 索引显示名称
+        /// Display name for the index
         #[arg(long)]
         name: Option<String>,
-        /// 全量重建（而非增量更新）
+        /// Full rebuild (instead of incremental update)
         #[arg(long)]
         rebuild: bool,
     },
-    /// 搜索文件内容
+    /// Search file contents
     Search {
-        /// 搜索关键词
+        /// Search keyword
         query: String,
-        /// JSON 输出（Agent 友好）
+        /// JSON output (Agent-friendly)
         #[arg(long)]
         json: bool,
-        /// 限定索引根 ID（可多次指定）
+        /// Restrict to specific index root IDs (repeatable)
         #[arg(long = "index", num_args = 0..)]
         index: Option<Vec<String>>,
-        /// 文件类型过滤（如 pdf/docx/md）
+        /// File type filter (e.g. pdf/docx/md)
         #[arg(long)]
         r#type: Option<String>,
-        /// 大小写敏感
+        /// Case-sensitive search
         #[arg(long)]
         case_sensitive: bool,
-        /// 页码（0-based，默认 0）
+        /// Page number (0-based, default 0)
         #[arg(long, default_value = "0")]
         page: usize,
-        /// 最大结果数（默认 50）
+        /// Max results (default 50)
         #[arg(long, default_value = "50")]
         limit: usize,
     },
-    /// 列出所有索引根
+    /// List all index roots
     List {
-        /// JSON 输出
+        /// JSON output
         #[arg(long)]
         json: bool,
     },
-    /// 删除索引根
+    /// Remove an index root
     Remove {
-        /// 索引根 ID
+        /// Index root ID
         id: String,
     },
-    /// 全量重建索引
+    /// Full-rebuild an index
     Rebuild {
-        /// 索引根 ID
+        /// Index root ID
         id: String,
     },
-    /// 预览文件全文
+    /// Preview full file content
     Preview {
-        /// 文件 UID（file://path）
+        /// File UID (file://path)
         uid: String,
-        /// JSON 输出
+        /// JSON output
         #[arg(long)]
         json: bool,
     },
-    /// 显示状态信息
+    /// Show status information
     Status,
-    /// 显示版本
+    /// Show version
     Version,
 }
 
-// ═══════════════════════════════════════════════════════════════
-// JSON 输出信封
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// i18n — human-readable strings. JSON payloads are NOT affected.
+// ====================================================================
+
+/// Supported human-readable languages. Defaults to English.
+enum Lang {
+    En,
+    Zh,
+}
+
+impl Lang {
+    fn from_code(code: &str) -> Self {
+        match code.to_lowercase().as_str() {
+            "zh" | "zh-cn" | "zh_cn" | "chinese" | "cn" => Lang::Zh,
+            _ => Lang::En,
+        }
+    }
+}
+
+/// Translation helper for human-readable CLI output. Add new strings here in
+/// both languages; JSON output never goes through this.
+struct T<'a>(&'a Lang);
+
+impl<'a> T<'a> {
+    /// Pick one of two static strings by language.
+    fn s(&self, en: &'a str, zh: &'a str) -> &'a str {
+        match self.0 {
+            Lang::En => en,
+            Lang::Zh => zh,
+        }
+    }
+
+    /// Pick one of two formatted strings by language. Use this when the
+    /// message contains interpolated values.
+    fn f(&self, en: impl std::fmt::Display, zh: impl std::fmt::Display) -> String {
+        match self.0 {
+            Lang::En => en.to_string(),
+            Lang::Zh => zh.to_string(),
+        }
+    }
+}
+
+// ====================================================================
+// JSON output envelope (language-independent, fixed English keys)
+// ====================================================================
 
 #[derive(Serialize)]
 struct OkResponse<T: Serialize> {
@@ -142,9 +198,9 @@ fn print_json_err(code: &str, message: &str) {
     println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 数据目录（与桌面 app 共享）
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// Data directory (shared with the desktop app)
+// ====================================================================
 
 const APP_IDENTIFIER: &str = "com.pivotsearch.app";
 
@@ -157,7 +213,7 @@ fn indexes_dir() -> PathBuf {
     data_dir().join("indexes")
 }
 
-/// 扫描 indexes/ 目录，恢复所有已有索引 {index_id → index_dir}
+/// Scan the indexes/ directory and recover all known indexes {index_id → index_dir}.
 fn scan_indexes() -> HashMap<String, PathBuf> {
     let mut map = HashMap::new();
     let dir = indexes_dir();
@@ -175,7 +231,7 @@ fn scan_indexes() -> HashMap<String, PathBuf> {
     map
 }
 
-/// 从 tree_index.sqlite 读索引根信息
+/// Read index-root info from tree_index.sqlite.
 fn read_index_info(index_dir: &Path) -> Option<(String, String, Option<String>, u64)> {
     let tree_path = index_dir.join("tree_index.sqlite");
     let ti = TreeIndex::open(&tree_path).ok()?;
@@ -185,11 +241,12 @@ fn read_index_info(index_dir: &Path) -> Option<(String, String, Option<String>, 
     Some((root.id.clone(), root.path.clone(), root.display_name.clone(), count))
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 辅助：构造 searcher
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// Helper: build a searcher
+// ====================================================================
 
-fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>) -> MultiIndexSearcher {
+fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>, lang: &Lang) -> MultiIndexSearcher {
+    let t = T(lang);
     let (_schema, fields, tm) = build_schema();
     let mut multi = MultiIndexSearcher::new();
 
@@ -198,7 +255,13 @@ fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>) -> MultiIndexSear
         let index = match Index::open_in_dir(&tantivy_dir) {
             Ok(i) => i,
             Err(e) => {
-                eprintln!("[warn] 打开索引 {} 失败: {}", index_id, e);
+                eprintln!(
+                    "{}",
+                    t.s(
+                        &format!("[warn] failed to open index {}: {}", index_id, e),
+                        &format!("[警告] 打开索引 {} 失败: {}", index_id, e),
+                    )
+                );
                 continue;
             }
         };
@@ -220,20 +283,30 @@ fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>) -> MultiIndexSear
         };
         match SimpleSearcher::new(index, search_fields, tm.clone()) {
             Ok(s) => multi.add(index_id.clone(), s),
-            Err(e) => eprintln!("[warn] 构造 searcher {} 失败: {}", index_id, e),
+            Err(e) => eprintln!(
+                "{}",
+                t.s(
+                    &format!("[warn] failed to build searcher {}: {}", index_id, e),
+                    &format!("[警告] 构造 searcher {} 失败: {}", index_id, e),
+                )
+            ),
         }
     }
     multi
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 命令实现
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// Command implementations
+// ====================================================================
 
-fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
+fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool, lang: &Lang) -> i32 {
+    let t = T(lang);
     let root = PathBuf::from(dir);
     if !root.is_dir() {
-        eprintln!("错误：不是目录: {dir}");
+        eprintln!(
+            "{}",
+            t.f(format!("error: not a directory: {dir}"), &format!("错误：不是目录: {dir}"))
+        );
         return 2;
     }
 
@@ -248,7 +321,13 @@ fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
 
     let index_dir = indexes_dir().join(&index_id);
     std::fs::create_dir_all(&index_dir).unwrap_or_else(|e| {
-        eprintln!("创建索引目录失败: {e}");
+        eprintln!(
+            "{}",
+            t.s(
+                &format!("failed to create index directory: {e}"),
+                &format!("创建索引目录失败: {e}"),
+            )
+        );
         std::process::exit(1);
     });
 
@@ -259,12 +338,18 @@ fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
     let tantivy_meta = tantivy_dir.join("meta.json");
     let index = if tantivy_meta.exists() {
         Index::open_in_dir(&tantivy_dir).unwrap_or_else(|e| {
-            eprintln!("打开索引失败: {e}");
+            eprintln!(
+                "{}",
+                t.f(format!("failed to open index: {e}"), &format!("打开索引失败: {e}"))
+            );
             std::process::exit(1);
         })
     } else {
         Index::create_in_dir(&tantivy_dir, schema).unwrap_or_else(|e| {
-            eprintln!("创建索引失败: {e}");
+            eprintln!(
+                "{}",
+                t.f(format!("failed to create index: {e}"), &format!("创建索引失败: {e}"))
+            );
             std::process::exit(1);
         })
     };
@@ -275,13 +360,25 @@ fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
 
     let tree_path = index_dir.join("tree_index.sqlite");
     let tree_index = TreeIndex::open(&tree_path).unwrap_or_else(|e| {
-        eprintln!("打开 tree_index 失败: {e}");
+        eprintln!(
+            "{}",
+            t.s(
+                &format!("failed to open tree_index: {e}"),
+                &format!("打开 tree_index 失败: {e}"),
+            )
+        );
         std::process::exit(1);
     });
     tree_index
         .add_index_root(&index_id, dir, display_name.as_deref(), now_millis())
         .unwrap_or_else(|e| {
-            eprintln!("记录索引根失败: {e}");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("failed to record index root: {e}"),
+                    &format!("记录索引根失败: {e}"),
+                )
+            );
             std::process::exit(1);
         });
 
@@ -293,7 +390,10 @@ fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
     };
 
     let mut writer = index.writer(50_000_000).unwrap_or_else(|e| {
-        eprintln!("创建 writer 失败: {e}");
+        eprintln!(
+            "{}",
+            t.f(format!("failed to create writer: {e}"), &format!("创建 writer 失败: {e}"))
+        );
         std::process::exit(1);
     });
 
@@ -303,20 +403,41 @@ fn cmd_index(dir: &str, name: &Option<String>, rebuild: bool) -> i32 {
     match result {
         Ok(pivotsearch_contracts::UpdateResult::SuccessChanged) => {
             let count = tree_index.count_files(&index_id).unwrap_or(0);
-            eprintln!("✅ 索引完成: {dir} ({count} 文件)");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("✅ indexing complete: {dir} ({count} files)"),
+                    &format!("✅ 索引完成: {dir} ({count} 文件)"),
+                )
+            );
             0
         }
         Ok(pivotsearch_contracts::UpdateResult::SuccessUnchanged) => {
             let count = tree_index.count_files(&index_id).unwrap_or(0);
-            eprintln!("✅ 无变化: {dir} ({count} 文件)");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("✅ no changes: {dir} ({count} files)"),
+                    &format!("✅ 无变化: {dir} ({count} 文件)"),
+                )
+            );
             0
         }
         Ok(pivotsearch_contracts::UpdateResult::Failure) => {
-            eprintln!("⚠️  索引部分失败");
+            eprintln!(
+                "{}",
+                t.s("⚠️  indexing partially failed", "⚠️  索引部分失败")
+            );
             1
         }
         Err(e) => {
-            eprintln!("❌ 索引失败: {e}");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("❌ indexing failed: {e}"),
+                    &format!("❌ 索引失败: {e}"),
+                )
+            );
             1
         }
     }
@@ -330,30 +451,41 @@ fn cmd_search(
     case_sensitive: bool,
     page: usize,
     _limit: usize,
+    lang: &Lang,
 ) -> i32 {
+    let t = T(lang);
     let index_dirs = scan_indexes();
     if index_dirs.is_empty() {
         if json {
-            print_json_err("NO_INDEX", "没有索引，请先运行 psearch index <dir>");
+            print_json_err(
+                "NO_INDEX",
+                t.s(
+                    "no index found; run `psearch index <dir>` first",
+                    "没有索引，请先运行 psearch index <dir>",
+                ),
+            );
         } else {
-            eprintln!("没有索引。请先运行: psearch index <dir>");
+            eprintln!(
+                "{}",
+                t.s(
+                    "no index found. Run: psearch index <dir>",
+                    "没有索引。请先运行: psearch index <dir>",
+                )
+            );
         }
         return 3;
     }
 
-    let multi = build_multi_searcher(&index_dirs);
+    let multi = build_multi_searcher(&index_dirs, lang);
 
-    let parsers = type_filter.as_ref().map(|ext| {
-        let ext_with_dot = format!(".{}", ext.to_lowercase());
-        // type 过滤是通过扩展名后缀匹配的，这里转成 parser 名列表不精确
-        // 更好的方式是 SimpleSearcher 支持 type 过滤，但当前通过客户端过滤
-        vec![ext_with_dot]
-    });
+    // Type filter matches by extension suffix on the client side (more accurate
+    // than mapping extensions to parser names).
+    let _parsers = type_filter.as_ref().map(|ext| format!(".{}", ext.to_lowercase()));
 
     let request = SearchRequest {
         query: query.to_string(),
         index_ids: index_filter.clone(),
-        parsers: None, // parser 过滤不精确，用 type 后端过滤更准确
+        parsers: None, // client-side type filtering below is more accurate
         min_size: None,
         max_size: None,
         page,
@@ -362,7 +494,7 @@ fn cmd_search(
 
     match multi.search(&request) {
         Ok(resp) => {
-            // type 过滤（客户端，按路径扩展名）
+            // Client-side type filter (by path extension).
             let filtered_results = if let Some(ext) = type_filter {
                 let ext_lower = format!(".{}", ext.to_lowercase());
                 resp.results
@@ -377,6 +509,7 @@ fn cmd_search(
             let total = filtered_results.len();
 
             if json {
+                // JSON payload is language-independent: fixed English keys.
                 let data = serde_json::json!({
                     "total_hits": total,
                     "results": filtered_results,
@@ -385,38 +518,51 @@ fn cmd_search(
                 });
                 print_json_ok(data);
             } else {
-                println!("搜索「{query}」命中 {total} 条结果：");
+                println!(
+                    "{}",
+                    t.s(
+                        &format!("search \"{query}\" matched {total} results:"),
+                        &format!("搜索「{query}」命中 {total} 条结果："),
+                    )
+                );
                 println!();
                 for (i, r) in filtered_results.iter().enumerate() {
                     let fname = r.path.rsplit('/').next().unwrap_or(&r.path);
                     println!("{}. {}", i + 1, fname);
-                    println!("   路径: {}", r.path);
-                    println!("   类型: {} | 大小: {} 字节", r.parser, r.size);
+                    let path_label = t.s("path", "路径");
+                    let type_label = t.s("type", "类型");
+                    let size_label = t.s("size (bytes)", "大小: 字节");
+                    let snippet_label = t.s("snippet", "片段");
+                    println!("   {path_label}: {}", r.path);
+                    println!("   {type_label}: {} | {size_label}: {}", r.parser, r.size);
                     let clean = r.snippet.replace("<b>", "").replace("</b>", "");
                     if !clean.is_empty() {
-                        println!("   片段: {}", clean);
+                        println!("   {snippet_label}: {}", clean);
                     }
                     println!();
                 }
                 if filtered_results.is_empty() {
-                    println!("（无结果）");
+                    println!("{}", t.s("(no results)", "（无结果）"));
                 }
             }
-            let _ = parsers; // 避免 unused warning
             0
         }
         Err(e) => {
             if json {
                 print_json_err("SEARCH_ERROR", &e.to_string());
             } else {
-                eprintln!("搜索失败: {e}");
+                eprintln!(
+                    "{}",
+                    t.f(format!("search failed: {e}"), &format!("搜索失败: {e}"))
+                );
             }
             1
         }
     }
 }
 
-fn cmd_list(json: bool) -> i32 {
+fn cmd_list(json: bool, lang: &Lang) -> i32 {
+    let t = T(lang);
     let index_dirs = scan_indexes();
     let mut infos: Vec<serde_json::Value> = Vec::new();
     let mut text_lines: Vec<String> = Vec::new();
@@ -431,7 +577,14 @@ fn cmd_list(json: bool) -> i32 {
                     "file_count": count,
                 }));
             } else {
-                text_lines.push(format!("  {} [{}] ({} 文件) — {}", id, name.unwrap_or_default(), count, path));
+                let files_word = t.s("files", "文件");
+                text_lines.push(format!(
+                    "  {} [{}] ({} {files_word}) — {}",
+                    id,
+                    name.unwrap_or_default(),
+                    count,
+                    path
+                ));
             }
         }
     }
@@ -439,7 +592,13 @@ fn cmd_list(json: bool) -> i32 {
     if json {
         print_json_ok(serde_json::json!({ "indexes": infos }));
     } else if text_lines.is_empty() {
-        println!("没有索引。运行 psearch index <dir> 添加。");
+        println!(
+            "{}",
+            t.s(
+                "no index found. Run `psearch index <dir>` to add one.",
+                "没有索引。运行 psearch index <dir> 添加。",
+            )
+        );
     } else {
         for line in &text_lines {
             println!("{line}");
@@ -448,23 +607,34 @@ fn cmd_list(json: bool) -> i32 {
     0
 }
 
-fn cmd_remove(id: &str) -> i32 {
+fn cmd_remove(id: &str, lang: &Lang) -> i32 {
+    let t = T(lang);
     let index_dir = indexes_dir().join(id);
     if !index_dir.exists() {
-        eprintln!("索引不存在: {id}");
+        eprintln!(
+            "{}",
+            t.f(format!("index not found: {id}"), &format!("索引不存在: {id}"))
+        );
         return 3;
     }
     let _ = std::fs::remove_dir_all(&index_dir);
-    eprintln!("✅ 已删除: {id}");
+    eprintln!(
+        "{}",
+        t.f(format!("✅ removed: {id}"), &format!("✅ 已删除: {id}"))
+    );
     0
 }
 
-fn cmd_rebuild(id: &str) -> i32 {
+fn cmd_rebuild(id: &str, lang: &Lang) -> i32 {
+    let t = T(lang);
     let index_dirs = scan_indexes();
     let index_dir = match index_dirs.get(id) {
         Some(d) => d.clone(),
         None => {
-            eprintln!("索引不存在: {id}");
+            eprintln!(
+                "{}",
+                t.f(format!("index not found: {id}"), &format!("索引不存在: {id}"))
+            );
             return 3;
         }
     };
@@ -473,7 +643,13 @@ fn cmd_rebuild(id: &str) -> i32 {
     let ti = match TreeIndex::open(&tree_path) {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("打开 tree_index 失败: {e}");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("failed to open tree_index: {e}"),
+                    &format!("打开 tree_index 失败: {e}"),
+                )
+            );
             return 1;
         }
     };
@@ -481,7 +657,13 @@ fn cmd_rebuild(id: &str) -> i32 {
     let root_info = match roots.iter().find(|r| r.id == id) {
         Some(r) => r.clone(),
         None => {
-            eprintln!("索引根信息未找到: {id}");
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("index root info not found: {id}"),
+                    &format!("索引根信息未找到: {id}"),
+                )
+            );
             return 3;
         }
     };
@@ -491,7 +673,10 @@ fn cmd_rebuild(id: &str) -> i32 {
     let _ = std::fs::remove_dir_all(&tantivy_dir);
     std::fs::create_dir_all(&tantivy_dir).unwrap_or(());
     let index = Index::create_in_dir(&tantivy_dir, schema).unwrap_or_else(|e| {
-        eprintln!("创建索引失败: {e}");
+        eprintln!(
+            "{}",
+            t.f(format!("failed to create index: {e}"), &format!("创建索引失败: {e}"))
+        );
         std::process::exit(1);
     });
     index.tokenizers().register(
@@ -501,7 +686,10 @@ fn cmd_rebuild(id: &str) -> i32 {
 
     let registry = ParserRegistryImpl::with_builtin_parsers().with_pdf();
     let mut writer = index.writer(50_000_000).unwrap_or_else(|e| {
-        eprintln!("创建 writer 失败: {e}");
+        eprintln!(
+            "{}",
+            t.f(format!("failed to create writer: {e}"), &format!("创建 writer 失败: {e}"))
+        );
         std::process::exit(1);
     });
     let config = IncrementalConfig {
@@ -514,17 +702,27 @@ fn cmd_rebuild(id: &str) -> i32 {
 
     match result {
         Ok(_) => {
-            eprintln!("✅ 重建完成: {}", root_info.path);
+            eprintln!(
+                "{}",
+                t.s(
+                    &format!("✅ rebuild complete: {}", root_info.path),
+                    &format!("✅ 重建完成: {}", root_info.path),
+                )
+            );
             0
         }
         Err(e) => {
-            eprintln!("❌ 重建失败: {e}");
+            eprintln!(
+                "{}",
+                t.f(format!("❌ rebuild failed: {e}"), &format!("❌ 重建失败: {e}"))
+            );
             1
         }
     }
 }
 
-fn cmd_preview(uid: &str, json: bool) -> i32 {
+fn cmd_preview(uid: &str, json: bool, lang: &Lang) -> i32 {
+    let t = T(lang);
     let path_str = uid.strip_prefix("file://").unwrap_or(uid);
     let path = PathBuf::from(path_str);
 
@@ -534,7 +732,10 @@ fn cmd_preview(uid: &str, json: bool) -> i32 {
                 "uid": uid, "path": path_str, "exists": false, "content": ""
             }));
         } else {
-            println!("文件不存在: {path_str}");
+            println!(
+                "{}",
+                t.f(format!("file not found: {path_str}"), &format!("文件不存在: {path_str}"))
+            );
         }
         return 0;
     }
@@ -552,8 +753,10 @@ fn cmd_preview(uid: &str, json: bool) -> i32 {
                     "title": result.title,
                 }));
             } else {
-                println!("文件: {}", path_str);
-                println!("解析器: {}", result.parser_name);
+                let file_label = t.s("file", "文件");
+                let parser_label = t.s("parser", "解析器");
+                println!("{file_label}: {}", path_str);
+                println!("{parser_label}: {}", result.parser_name);
                 println!("---");
                 println!("{}", result.content);
             }
@@ -563,40 +766,51 @@ fn cmd_preview(uid: &str, json: bool) -> i32 {
             if json {
                 print_json_err("PARSE_ERROR", &e.to_string());
             } else {
-                eprintln!("解析失败: {e}");
+                eprintln!(
+                    "{}",
+                    t.f(format!("parse failed: {e}"), &format!("解析失败: {e}"))
+                );
             }
             1
         }
     }
 }
 
-fn cmd_status() -> i32 {
+fn cmd_status(lang: &Lang) -> i32 {
+    let t = T(lang);
     let d = data_dir();
     let idx_dir = indexes_dir();
     let index_dirs = scan_indexes();
 
     println!("psearch {}", env!("CARGO_PKG_VERSION"));
     println!();
-    println!("数据目录: {}", d.display());
-    println!("索引目录: {}", idx_dir.display());
-    println!("索引数量: {}", index_dirs.len());
+    println!("{}: {}", t.s("data dir", "数据目录"), d.display());
+    println!("{}: {}", t.s("index dir", "索引目录"), idx_dir.display());
+    println!("{}: {}", t.s("index count", "索引数量"), index_dirs.len());
     println!();
 
     if index_dirs.is_empty() {
-        println!("（无索引，运行 psearch index <dir> 添加）");
+        println!(
+            "{}",
+            t.s(
+                "(no index; run `psearch index <dir>` to add one)",
+                "（无索引，运行 psearch index <dir> 添加）",
+            )
+        );
     } else {
+        let files_word = t.s("files", "文件");
         for (_id, index_dir) in &index_dirs {
             if let Some((id, path, name, count)) = read_index_info(index_dir) {
-                println!("  {} ({}): {} [{} 文件]", id, name.unwrap_or_default(), path, count);
+                println!("  {} ({}): {} [{} {files_word}]", id, name.unwrap_or_default(), path, count);
             }
         }
     }
     0
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 辅助函数
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// Helpers
+// ====================================================================
 
 fn hash_path(s: &str) -> u64 {
     use std::hash::{Hash, Hasher};
@@ -612,23 +826,24 @@ fn now_millis() -> i64 {
         .unwrap_or(0)
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 入口
-// ═══════════════════════════════════════════════════════════════
+// ====================================================================
+// Entry point
+// ====================================================================
 
 fn main() {
     let cli = Cli::parse();
+    let lang = Lang::from_code(&cli.lang);
 
     let code = match cli.command {
-        Commands::Index { dir, name, rebuild } => cmd_index(&dir, &name, rebuild),
+        Commands::Index { dir, name, rebuild } => cmd_index(&dir, &name, rebuild, &lang),
         Commands::Search { query, json, index, r#type, case_sensitive, page, limit } => {
-            cmd_search(&query, json, &index, &r#type, case_sensitive, page, limit)
+            cmd_search(&query, json, &index, &r#type, case_sensitive, page, limit, &lang)
         }
-        Commands::List { json } => cmd_list(json),
-        Commands::Remove { id } => cmd_remove(&id),
-        Commands::Rebuild { id } => cmd_rebuild(&id),
-        Commands::Preview { uid, json } => cmd_preview(&uid, json),
-        Commands::Status => cmd_status(),
+        Commands::List { json } => cmd_list(json, &lang),
+        Commands::Remove { id } => cmd_remove(&id, &lang),
+        Commands::Rebuild { id } => cmd_rebuild(&id, &lang),
+        Commands::Preview { uid, json } => cmd_preview(&uid, json, &lang),
+        Commands::Status => cmd_status(&lang),
         Commands::Version => {
             println!("psearch {}", env!("CARGO_PKG_VERSION"));
             0
