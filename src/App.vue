@@ -13,6 +13,7 @@ import {
   copyToClipboard,
   openInFolder,
   installCli,
+  getIndexDetails,
   type SearchResult,
   type IndexInfo,
   type IndexProgress,
@@ -66,6 +67,12 @@ const indexes = ref<IndexInfo[]>([]);
 const showIndexDialog = ref(false);
 const newPath = ref("");
 const progressMsg = ref("");
+const indexProgress = ref<{ processed: number; total: number; pct: number } | null>(null);
+const isIndexing = ref(false);
+
+// ═══ 索引详情对话框 ═══
+const detailDialog = ref(false);
+const indexDetail = ref<any>(null);
 let unlistenProgress: (() => void) | null = null;
 
 // ═══ 文件类型筛选 ═══
@@ -210,6 +217,15 @@ async function onOpenFolder(path: string) {
   }
 }
 
+async function onIndexDblClick(row: IndexInfo) {
+  try {
+    indexDetail.value = await getIndexDetails(row.id);
+    detailDialog.value = true;
+  } catch (e) {
+    ElMessage.error("获取详情失败");
+  }
+}
+
 async function onInstallCli() {
   try {
     const msg = await installCli();
@@ -275,15 +291,13 @@ async function browseFolder() {
 async function onAddIndex() {
   if (!newPath.value.trim()) return;
   try {
-    progressMsg.value = "正在添加并索引...";
+    isIndexing.value = true;
     await addIndex(newPath.value);
     newPath.value = "";
-    setTimeout(async () => {
-      await refreshIndexes();
-      progressMsg.value = "";
-    }, 3000);
+    // 进度由 onIndexProgress 回调驱动，不再用 setTimeout
   } catch (e) {
-    progressMsg.value = `添加失败: ${e}`;
+    isIndexing.value = false;
+    ElMessage.error(`添加失败: ${e}`);
   }
 }
 
@@ -298,11 +312,12 @@ async function onRemoveIndex(id: string) {
 
 async function onRebuildIndex(id: string) {
   try {
-    progressMsg.value = "正在重建索引...";
+    isIndexing.value = true;
     await rebuildIndex(id);
-    setTimeout(() => (progressMsg.value = ""), 3000);
+    // 进度由 onIndexProgress 回调驱动
   } catch (e) {
-    progressMsg.value = `重建失败: ${e}`;
+    isIndexing.value = false;
+    ElMessage.error(`重建失败: ${e}`);
   }
 }
 
@@ -318,6 +333,21 @@ onMounted(async () => {
   await refreshIndexes();
   unlistenProgress = await onIndexProgress((p: IndexProgress) => {
     progressMsg.value = p.message;
+    if (p.phase === "done") {
+      isIndexing.value = false;
+      indexProgress.value = null;
+      progressMsg.value = "";
+      ElMessage.success("索引完成");
+      refreshIndexes();
+    } else if (p.phase === "error") {
+      isIndexing.value = false;
+      indexProgress.value = null;
+      ElMessage.error(p.message);
+    } else {
+      isIndexing.value = true;
+      const pct = p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0;
+      indexProgress.value = { processed: p.processed, total: p.total, pct };
+    }
   });
   // 聚焦搜索框
   setTimeout(() => {
@@ -331,6 +361,21 @@ onMounted(async () => {
   await refreshIndexes();
   unlistenProgress = await onIndexProgress((p: IndexProgress) => {
     progressMsg.value = p.message;
+    if (p.phase === "done") {
+      isIndexing.value = false;
+      indexProgress.value = null;
+      progressMsg.value = "";
+      ElMessage.success("索引完成");
+      refreshIndexes();
+    } else if (p.phase === "error") {
+      isIndexing.value = false;
+      indexProgress.value = null;
+      ElMessage.error(p.message);
+    } else {
+      isIndexing.value = true;
+      const pct = p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0;
+      indexProgress.value = { processed: p.processed, total: p.total, pct };
+    }
   });
   setTimeout(() => {
     document.querySelector<HTMLInputElement>(".search-input input")?.focus();
@@ -419,6 +464,9 @@ onUnmounted(() => {
             <span class="result-filter" v-if="filterType">
               （已筛选 .{{ filterType }}）
             </span>
+            <span v-if="isIndexing" class="indexing-hint">
+              ⚠ 索引正在构建中，搜索结果可能不完整
+            </span>
           </div>
 
           <!-- 空搜索提示 -->
@@ -496,7 +544,19 @@ onUnmounted(() => {
 
     <!-- ═══ 底部状态栏 ═══ -->
     <footer class="statusbar">
-      <span v-if="progressMsg" class="status-progress">{{ progressMsg }}</span>
+      <!-- 索引进度条 -->
+      <template v-if="isIndexing && indexProgress">
+        <span class="status-progress">
+          {{ progressMsg || "正在索引..." }}
+        </span>
+        <el-progress
+          :percentage="indexProgress?.pct ?? 0"
+          :stroke-width="14"
+          :format="() => `${indexProgress?.processed ?? 0}/${indexProgress?.total || '?'}`"
+          style="width: 200px; margin-left: 8px;"
+        />
+      </template>
+      <span v-else-if="progressMsg" class="status-progress">{{ progressMsg }}</span>
       <span v-else-if="indexes.length > 0" class="status-info">
         📂 {{ indexes.length }} 个索引目录
         <template v-for="(idx, i) in indexes" :key="idx.id">
@@ -520,7 +580,7 @@ onUnmounted(() => {
         <el-button type="primary" @click="onAddIndex">添加</el-button>
       </div>
 
-      <el-table :data="indexes" stripe style="width: 100%; margin-top: 16px">
+      <el-table :data="indexes" stripe style="width: 100%; margin-top: 16px" @row-dblclick="onIndexDblClick">
         <el-table-column prop="display_name" label="名称" width="150">
           <template #default="{ row }">
             {{ row.display_name || row.path.split("/").pop() }}
@@ -539,6 +599,51 @@ onUnmounted(() => {
       <div class="cli-install">
         <el-button @click="onInstallCli">💻 安装命令行工具 (psearch)</el-button>
         <span class="cli-hint">安装后可在终端/Agent 中使用 psearch 命令</span>
+      </div>
+    </el-dialog>
+
+    <!-- ═══ 索引详情对话框 ═══ -->
+    <el-dialog v-model="detailDialog" title="索引详情" width="600px">
+      <div v-if="indexDetail" class="detail-content">
+        <div class="detail-section">
+          <h4>基本信息</h4>
+          <div class="detail-row"><span>名称</span><span>{{ indexDetail.name || indexDetail.path.split("/").pop() }}</span></div>
+          <div class="detail-row"><span>路径</span><span class="mono">{{ indexDetail.path }}</span></div>
+          <div class="detail-row"><span>文件数</span><span>{{ indexDetail.file_count }}</span></div>
+          <div class="detail-row"><span>创建时间</span><span>{{ formatDate(indexDetail.created_at) }}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <h4>文件类型分布</h4>
+          <div v-for="stat in indexDetail.parser_stats" :key="stat.parser" class="detail-row">
+            <span>{{ stat.parser }}</span>
+            <span>
+              <el-progress
+                :percentage="Math.round(stat.count / indexDetail.file_count * 100)"
+                :stroke-width="12"
+                :format="() => stat.count.toString()"
+                style="width: 150px;"
+              />
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>最近修改的文件</h4>
+          <el-table :data="indexDetail.recent_files" stripe size="small" style="width: 100%">
+            <el-table-column prop="path" label="文件路径" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.path.split("/").pop() }}
+              </template>
+            </el-table-column>
+            <el-table-column label="修改时间" width="120">
+              <template #default="{ row }">
+                {{ formatDate(row.mtime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="parser" label="解析器" width="120" />
+          </el-table>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -974,6 +1079,46 @@ body {
 .cli-hint {
   font-size: 12px;
   color: var(--ps-text-secondary);
+}
+
+.indexing-hint {
+  margin-left: 8px;
+  color: #e6a23c;
+  font-size: 12px;
+}
+
+.detail-content {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section h4 {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--ps-text);
+  border-bottom: 1px solid var(--ps-border);
+  padding-bottom: 4px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.detail-row span:first-child {
+  color: var(--ps-text-secondary);
+}
+
+.mono {
+  font-family: "SF Mono", "Cascadia Code", monospace;
+  font-size: 12px;
 }
 
 /* Element Plus 覆盖 */

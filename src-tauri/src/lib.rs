@@ -42,6 +42,7 @@ pub struct IndexProgress {
     processed: usize,
     total: usize,
     message: String,
+    phase: String, // "indexing" / "done"
 }
 
 // ── 命令实现 ──
@@ -118,16 +119,32 @@ async fn add_index(
                 let _ = app_clone.emit(
                     "index-progress",
                     IndexProgress {
-                        index_id: index_id_clone,
+                        index_id: index_id_clone.clone(),
                         processed: 0,
                         total: 0,
                         message: format!("索引失败: {e}"),
+                        phase: "error".to_string(),
                     },
                 );
                 return;
             }
         };
-        let _ = update_incremental(
+        let app_for_progress = app_clone.clone();
+        let id_for_progress = index_id_clone.clone();
+        let mut progress_cb = move |processed: usize, total: usize| {
+            let pct = if total > 0 { processed * 100 / total } else { 0 };
+            let _ = app_for_progress.emit(
+                "index-progress",
+                IndexProgress {
+                    index_id: id_for_progress.clone(),
+                    processed,
+                    total,
+                    message: format!("正在索引... {}% ({}{})", pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
+                    phase: "indexing".to_string(),
+                },
+            );
+        };
+        let _ = update_incremental_with_progress(
             &root,
             IndexAction::Update,
             &config,
@@ -135,6 +152,7 @@ async fn add_index(
             &mut writer,
             &tree_index,
             &parser_registry,
+            Some(&mut progress_cb),
         );
         let _ = writer.commit();
 
@@ -145,6 +163,7 @@ async fn add_index(
                 processed: 0,
                 total: 0,
                 message: "索引完成".to_string(),
+                phase: "done".to_string(),
             },
         );
     });
@@ -364,7 +383,22 @@ async fn rebuild_index(
                     index_id: id_clone.clone(),
                     ..Default::default()
                 };
-                let _ = update_incremental(
+                let app_for_progress = app_clone.clone();
+                let id_for_progress = id_clone.clone();
+                let mut progress_cb = move |processed: usize, total: usize| {
+                    let pct = if total > 0 { processed * 100 / total } else { 0 };
+                    let _ = app_for_progress.emit(
+                        "index-progress",
+                        IndexProgress {
+                            index_id: id_for_progress.clone(),
+                            processed,
+                            total,
+                            message: format!("正在重建... {}% ({}{})", pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
+                            phase: "indexing".to_string(),
+                        },
+                    );
+                };
+                let _ = update_incremental_with_progress(
                     &root,
                     IndexAction::Rebuild,
                     &config,
@@ -372,6 +406,7 @@ async fn rebuild_index(
                     &mut writer,
                     &ti,
                     &parser_registry,
+                    Some(&mut progress_cb),
                 );
                 let _ = writer.commit();
                 let _ = app_clone.emit(
@@ -381,6 +416,7 @@ async fn rebuild_index(
                         processed: 0,
                         total: 0,
                         message: "重建完成".to_string(),
+                        phase: "done".to_string(),
                     },
                 );
             });
@@ -489,6 +525,68 @@ async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
     }
 }
 
+/// 获取索引详细信息（双击索引行查看）。
+#[tauri::command]
+async fn index_details(
+    id: String,
+    state: State<'_, Arc<Mutex<EngineState>>>,
+) -> Result<serde_json::Value, String> {
+    let index_dir = {
+        let s = state.lock();
+        s.index_dirs.get(&id).cloned()
+    };
+
+    let index_dir = match index_dir {
+        Some(d) => d,
+        None => return Err("索引不存在".to_string()),
+    };
+
+    let tree_path = index_dir.join("tree_index.sqlite");
+    let ti = TreeIndex::open(&tree_path).map_err(|e| e.to_string())?;
+
+    let roots = ti.list_index_roots().map_err(|e| e.to_string())?;
+    let root_info = roots
+        .iter()
+        .find(|r| r.id == id)
+        .ok_or("索引根信息未找到")?
+        .clone();
+
+    let file_count = ti.count_files(&id).unwrap_or(0);
+    let parser_stats = ti.stats_by_parser(&id).unwrap_or_default();
+    let recent = ti.recent_files(&id, 20).unwrap_or_default();
+
+    let parser_stats_json: Vec<serde_json::Value> = parser_stats
+        .iter()
+        .map(|(name, count)| {
+            serde_json::json!({
+                "parser": name,
+                "count": count,
+            })
+        })
+        .collect();
+
+    let recent_json: Vec<serde_json::Value> = recent
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "path": f.path,
+                "mtime": f.mtime,
+                "parser": f.parser,
+            })
+        })
+        .collect();
+
+    Ok(serde_json::json!({
+        "id": root_info.id,
+        "path": root_info.path,
+        "name": root_info.display_name,
+        "created_at": root_info.created_at,
+        "file_count": file_count,
+        "parser_stats": parser_stats_json,
+        "recent_files": recent_json,
+    }))
+}
+
 // ── 辅助函数 ──
 
 fn md5_hash(s: &str) -> u64 {
@@ -544,6 +642,7 @@ pub fn run() {
             copy_to_clipboard,
             open_in_folder,
             install_cli,
+            index_details,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

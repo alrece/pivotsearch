@@ -66,7 +66,36 @@ pub fn update_incremental(
     tree_index: &TreeIndex,
     parser_registry: &dyn ParserRegistry,
 ) -> Result<UpdateResult> {
+    update_incremental_with_progress(root, action, config, fields, writer, tree_index, parser_registry, None)
+}
+
+/// 带进度回调的增量更新。progress 回调每 100 个文件调用一次。
+pub fn update_incremental_with_progress(
+    root: &Path,
+    action: IndexAction,
+    config: &IncrementalConfig,
+    fields: &SchemaFields,
+    writer: &mut IndexWriter,
+    tree_index: &TreeIndex,
+    parser_registry: &dyn ParserRegistry,
+    mut progress: Option<&mut dyn FnMut(usize, usize)>,
+) -> Result<UpdateResult> {
     let mut stats = IncrementalStats::default();
+
+    // 预统计文件总数（快速 stat，不解析内容）
+    let total = if let Some(ref mut _cb) = progress {
+        walkdir::WalkDir::new(root)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .count()
+    } else {
+        0
+    };
+
+    if let Some(ref mut cb) = progress {
+        cb(0, total);
+    }
 
     // 全量重建：先清空 tree_index 中该 index_id 的所有文件 + Tantivy 该 index_id 的文档
     if action == IndexAction::Rebuild {
@@ -88,6 +117,7 @@ pub fn update_incremental(
         .collect();
 
     // 遍历磁盘目录
+    let mut processed = 0usize;
     for entry in walkdir::WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
             continue;
@@ -95,6 +125,13 @@ pub fn update_incremental(
         let path = entry.path();
         let path_str = path.to_string_lossy().to_string();
         let file_name = entry.file_name().to_string_lossy().to_string();
+
+        processed += 1;
+        if processed % 100 == 0 {
+            if let Some(ref mut cb) = progress {
+                cb(processed, total);
+            }
+        }
 
         // 跳过 lock / 隐藏文件
         if file_name.ends_with(".lock") || file_name.starts_with('.') {
@@ -150,6 +187,11 @@ pub fn update_incremental(
         stats.added, stats.modified, stats.deleted,
         stats.skipped_unchanged, stats.skipped_pattern, stats.errors
     );
+
+    // 最终进度回调（100%）
+    if let Some(ref mut cb) = progress {
+        cb(processed, total);
+    }
 
     if stats.errors > 0 && stats.changed() {
         Ok(UpdateResult::SuccessChanged)

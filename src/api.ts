@@ -90,6 +90,17 @@ export interface IndexProgress {
   processed: number;
   total: number;
   message: string;
+  phase: string; // "indexing" / "done" / "error"
+}
+
+export interface IndexDetails {
+  id: string;
+  path: string;
+  name: string | null;
+  created_at: number;
+  file_count: number;
+  parser_stats: Array<{ parser: string; count: number }>;
+  recent_files: Array<{ path: string; mtime: number; parser: string | null }>;
 }
 
 export function onIndexProgress(
@@ -108,6 +119,10 @@ export async function copyToClipboard(text: string): Promise<void> {
 
 export async function openInFolder(path: string): Promise<void> {
   return invoke<void>("open_in_folder", { path });
+}
+
+export async function getIndexDetails(id: string): Promise<IndexDetails> {
+  return invoke<IndexDetails>("index_details", { id });
 }
 
 export async function installCli(): Promise<string> {

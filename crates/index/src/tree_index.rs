@@ -197,6 +197,50 @@ impl TreeIndex {
             .map(|n| n as u64)
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
+
+    /// 按 parser 类型分组统计文件数（索引详情用）。
+    /// 返回 Vec<(parser_name_or_"未知", count)>，按 count 降序。
+    pub fn stats_by_parser(&self, index_id: &str) -> Result<Vec<(String, u64)>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT parser, COUNT(*) as cnt FROM indexed_files WHERE index_id = ?1 GROUP BY parser ORDER BY cnt DESC",
+            )
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![index_id], |row| {
+                let parser: Option<String> = row.get(0)?;
+                let count: i64 = row.get(1)?;
+                let name = parser.unwrap_or_else(|| "未解析/不支持".to_string());
+                Ok((name, count as u64))
+            })
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
+    }
+
+    /// 取最近修改的文件（按 mtime 降序，限 N 条）。
+    pub fn recent_files(&self, index_id: &str, limit: u64) -> Result<Vec<IndexedFile>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT uid, path, mtime, parser, index_id FROM indexed_files WHERE index_id = ?1 ORDER BY mtime DESC LIMIT ?2",
+            )
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![index_id, limit as i64], |row| {
+                Ok(IndexedFile {
+                    uid: row.get(0)?,
+                    path: row.get(1)?,
+                    mtime: row.get(2)?,
+                    parser: row.get(3)?,
+                    index_id: row.get(4)?,
+                })
+            })
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
+    }
 }
 
 #[cfg(test)]
