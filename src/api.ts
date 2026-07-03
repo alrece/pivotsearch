@@ -91,6 +91,7 @@ export interface IndexProgress {
   total: number;
   message: string;
   phase: string; // "indexing" / "done" / "error"
+  name: string;
 }
 
 export interface IndexDetails {

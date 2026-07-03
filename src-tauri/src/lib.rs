@@ -42,7 +42,8 @@ pub struct IndexProgress {
     processed: usize,
     total: usize,
     message: String,
-    phase: String, // "indexing" / "done"
+    phase: String,  // "indexing" / "done" / "error"
+    name: String,   // 索引显示名（如 "Documents"）
 }
 
 // ── 命令实现 ──
@@ -124,6 +125,7 @@ async fn add_index(
                         total: 0,
                         message: format!("索引失败: {e}"),
                         phase: "error".to_string(),
+                        name: display_name.clone().unwrap_or_else(|| path.clone()),
                     },
                 );
                 return;
@@ -131,6 +133,7 @@ async fn add_index(
         };
         let app_for_progress = app_clone.clone();
         let id_for_progress = index_id_clone.clone();
+        let name_for_progress = display_name.clone().unwrap_or_else(|| path.clone());
         let mut progress_cb = move |processed: usize, total: usize| {
             let pct = if total > 0 { processed * 100 / total } else { 0 };
             let _ = app_for_progress.emit(
@@ -139,8 +142,9 @@ async fn add_index(
                     index_id: id_for_progress.clone(),
                     processed,
                     total,
-                    message: format!("正在索引... {}% ({}{})", pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
+                    message: format!("[{}] 正在索引... {}% ({}{})", name_for_progress, pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
                     phase: "indexing".to_string(),
+                    name: name_for_progress.clone(),
                 },
             );
         };
@@ -159,11 +163,12 @@ async fn add_index(
         let _ = app_clone.emit(
             "index-progress",
             IndexProgress {
-                index_id: index_id_clone,
+                index_id: index_id_clone.clone(),
                 processed: 0,
                 total: 0,
-                message: "索引完成".to_string(),
+                message: format!("[{}] 索引完成", display_name.as_deref().unwrap_or(&path)),
                 phase: "done".to_string(),
+                name: display_name.clone().unwrap_or_else(|| path.clone()),
             },
         );
     });
@@ -365,6 +370,7 @@ async fn rebuild_index(
             let root = PathBuf::from(&root_info.path);
             let app_clone = app.clone();
             let id_clone = id.clone();
+            let name_clone = root_info.display_name.clone().unwrap_or_else(|| root_info.path.clone());
             std::thread::spawn(move || {
                 let (_schema, fields, _) = build_schema();
                 let tantivy_dir = dir.join("tantivy");
@@ -385,6 +391,7 @@ async fn rebuild_index(
                 };
                 let app_for_progress = app_clone.clone();
                 let id_for_progress = id_clone.clone();
+                let name_for_rebuild = name_clone.clone();
                 let mut progress_cb = move |processed: usize, total: usize| {
                     let pct = if total > 0 { processed * 100 / total } else { 0 };
                     let _ = app_for_progress.emit(
@@ -393,8 +400,9 @@ async fn rebuild_index(
                             index_id: id_for_progress.clone(),
                             processed,
                             total,
-                            message: format!("正在重建... {}% ({}{})", pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
+                            message: format!("[{}] 正在重建... {}% ({}{})", name_for_rebuild, pct, processed, if total > 0 { format!("/{}", total) } else { String::new() }),
                             phase: "indexing".to_string(),
+                            name: name_for_rebuild.clone(),
                         },
                     );
                 };
@@ -412,11 +420,12 @@ async fn rebuild_index(
                 let _ = app_clone.emit(
                     "index-progress",
                     IndexProgress {
-                        index_id: id_clone,
+                        index_id: id_clone.clone(),
                         processed: 0,
                         total: 0,
-                        message: "重建完成".to_string(),
+                        message: format!("[{}] 重建完成", name_clone),
                         phase: "done".to_string(),
+                        name: name_clone,
                     },
                 );
             });

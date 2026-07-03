@@ -576,7 +576,7 @@ onUnmounted(() => {
           @keyup.enter="onAddIndex"
         />
         <el-button @click="browseFolder">📁 浏览</el-button>
-        <el-button type="primary" @click="onAddIndex">添加</el-button>
+        <el-button type="primary" @click="onAddIndex" :disabled="isIndexing">添加</el-button>
       </div>
 
       <el-table :data="indexes" stripe style="width: 100%; margin-top: 16px" @row-dblclick="onIndexDblClick">
@@ -589,7 +589,7 @@ onUnmounted(() => {
         <el-table-column prop="file_count" label="文件数" width="80" />
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button size="small" @click="onRebuildIndex(row.id)">重建</el-button>
+            <el-button size="small" @click="onRebuildIndex(row.id)" :disabled="isIndexing">重建</el-button>
             <el-button size="small" type="danger" @click="onRemoveIndex(row.id)">删除</el-button>
           </template>
         </el-table-column>
