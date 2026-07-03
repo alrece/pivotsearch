@@ -62,6 +62,16 @@ jobs:
       - name: 构建桌面应用
         run: pnpm tauri build --target ${{ matrix.target }}
 
+      # macOS: ad-hoc 签名（解决未签名 app 被 Gatekeeper 拦截）
+      - name: macOS ad-hoc 签名
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP_PATH=$(find src-tauri/target/*/release/bundle/macos -name "*.app" -maxdepth 1 | head -1)
+          echo "签名: $APP_PATH"
+          codesign --force --deep --options runtime --sign - "$APP_PATH"
+          # 验证签名
+          codesign --verify --verbose=2 "$APP_PATH" || true
+
       # 上传产物
       - name: 上传 macOS 产物
         if: matrix.os == 'macos-latest'
@@ -104,7 +114,29 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: "pivotsearch ${{ github.ref_name }}"
-          body: "跨平台本地全文搜索桌面应用 · 含 psearch CLI"
+          body: |
+            跨平台本地全文搜索桌面应用 · 含 psearch CLI
+
+            ## 安装说明
+
+            ### macOS
+            下载 `.dmg` 文件后：
+            1. 打开 DMG，拖动 PivotSearch 到「应用程序」文件夹
+            2. 首次打开如果提示"无法验证开发者"，右键点击 app → 选择「打开」→ 确认
+            3. 如果仍被阻止，在终端运行：
+               ```
+               sudo xattr -rd com.apple.quarantine /Applications/pivotsearch.app
+               ```
+
+            ### Linux
+            下载 `.deb` 安装：`sudo dpkg -i pivotsearch_*.deb`
+            或下载 `.AppImage` 直接运行：`chmod +x pivotsearch*.AppImage && ./pivotsearch*.AppImage`
+
+            ### Windows
+            下载 `.msi` 或 `.exe` 安装程序，双击运行。
+
+            ## psearch CLI
+            安装 app 后，打开「索引管理」→ 点击「安装命令行工具」即可在终端使用 `psearch` 命令。
           draft: false
           prerelease: false
           files: artifacts/**
