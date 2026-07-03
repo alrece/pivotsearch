@@ -1,11 +1,11 @@
-//! HTML 解析器（scraper）。提取正文，去 script/style/nav。
+//! HTML parser (scraper). Extracts body text, stripping script/style/nav.
 
 use chardetng::{Iso2022JpDetection, Utf8Detection};
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use scraper::{ElementRef, Html, Selector};
 use std::path::Path;
 
-/// HTML 解析器。
+/// HTML parser.
 #[derive(Default)]
 pub struct HtmlParser;
 
@@ -24,7 +24,7 @@ impl Parser for HtmlParser {
             source: e,
         })?;
 
-        // 编码检测
+        // Encoding detection
         let mut detector = chardetng::EncodingDetector::new(Iso2022JpDetection::Allow);
         detector.feed(&bytes, true);
         let encoding = detector.guess(None, Utf8Detection::Allow);
@@ -46,14 +46,14 @@ impl Parser for HtmlParser {
             .and_then(|el| el.value().attr("content"))
             .map(|s| s.to_string());
 
-        // 正文：去 script/style/nav/header/footer/aside，用 ElementRef 遍历
+        // Body: strip script/style/nav/header/footer/aside, traverse via ElementRef
         let body_sel = Selector::parse("body").unwrap();
         let skip_sel = Selector::parse("script, style, nav, header, footer, aside, noscript").unwrap();
 
         let mut content = String::new();
         if let Some(body) = document.select(&body_sel).next() {
-            // 收集所有要跳过的元素 id（用 ElementRef matches）
-            // 简化：遍历 body 下所有元素，跳过匹配 skip 的，取其直接文本节点
+            // Collect ids of all elements to skip (using ElementRef matches)
+            // Simplification: traverse all elements under body, skip those matching skip_sel, take their direct text nodes
             collect_text(&body, &skip_sel, &mut content);
         }
 
@@ -70,16 +70,16 @@ impl Parser for HtmlParser {
     }
 }
 
-/// 递归收集元素的文本，跳过匹配 skip_sel 的元素。
+/// Recursively collects an element's text, skipping elements that match skip_sel.
 fn collect_text(element: &ElementRef, skip_sel: &Selector, out: &mut String) {
     for child_node in element.children() {
-        // 尝试转为 ElementRef
+        // Try to wrap as ElementRef
         if let Some(child_el) = ElementRef::wrap(child_node) {
-            // 跳过匹配 skip 的元素
+            // Skip elements matching skip_sel
             if skip_sel.matches(&child_el) {
                 continue;
             }
-            // 递归
+            // Recurse
             collect_text(&child_el, skip_sel, out);
         } else if let Some(text) = child_node.value().as_text() {
             let t = text.trim();

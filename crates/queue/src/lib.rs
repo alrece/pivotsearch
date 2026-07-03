@@ -1,15 +1,15 @@
 //! # pivotsearch-queue
 //!
-//! 任务队列：单工作线程 + Task 状态机 + 多索引并发。
+//! Task queue: single worker thread + Task state machine + multi-index concurrency.
 //!
-//! 设计（复刻经典桌面搜索工具的 IndexingQueue 模式，净室重写）：
-//! - 单工作线程串行执行（Tantivy 单 writer 强约束）
-//! - Task 状态机：NotReady → Ready → Indexing → Finished
-//! - UPDATE/REBUILD 语义
-//! - 去重：队列里已有同 index_id 的 Ready Update → 新 Update 冗余丢弃
-//! - SUCCESS_UNCHANGED 跳过持久化
+//! Design (replicates the IndexingQueue pattern of classic desktop search tools; clean-room rewrite):
+//! - Single worker thread executes tasks serially (Tantivy single-writer constraint)
+//! - Task state machine: NotReady → Ready → Indexing → Finished
+//! - UPDATE/REBUILD semantics
+//! - Deduplication: a new Update is dropped as redundant when a Ready Update with the same index_id is already in the queue
+//! - SUCCESS_UNCHANGED skips persistence
 //!
-//! queue 只做调度，不依赖具体实现——通过 TaskHandler trait 执行任务。
+//! The queue only schedules and does not depend on concrete implementations — tasks are executed via the TaskHandler trait.
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use parking_lot::Mutex;
@@ -19,10 +19,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-/// 任务标识。
+/// Task identifier.
 pub type TaskId = String;
 
-/// Task 状态机。
+/// Task state machine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskState {
     NotReady,
@@ -31,7 +31,7 @@ pub enum TaskState {
     Finished,
 }
 
-/// 一个索引任务。
+/// An indexing task.
 #[derive(Debug, Clone)]
 pub struct Task {
     pub id: TaskId,
@@ -62,32 +62,32 @@ impl Task {
     }
 }
 
-/// 任务处理器 trait。
+/// Task handler trait.
 ///
-/// queue 通过此 trait 调用实际的索引逻辑（由 cli/src-tauri 注入）。
-/// queue 自身不依赖 index crate（依赖方向铁律）。
+/// The queue invokes the actual indexing logic through this trait (injected by cli/src-tauri).
+/// The queue itself does not depend on the index crate (strict dependency-direction rule).
 pub trait TaskHandler: Send + Sync {
-    /// 执行一个任务，返回 UpdateResult。
+    /// Execute a task and return an UpdateResult.
     fn handle(&self, index_id: &str, action: IndexAction) -> Result<UpdateResult>;
 }
 
-/// 任务队列。
+/// Task queue.
 ///
-/// 单工作线程串行执行任务。线程安全（内部用 channel + Mutex）。
+/// A single worker thread executes tasks serially. Thread-safe (uses a channel + Mutex internally).
 pub struct IndexingQueue {
     sender: Sender<Task>,
-    /// 已入队但未完成的 index_id（去重用）。
+    /// Enqueued but not-yet-complete index_id (used for deduplication).
     pending: Arc<Mutex<HashSet<String>>>,
-    /// 工作线程句柄。
+    /// Worker thread handle.
     worker: Mutex<Option<JoinHandle<()>>>,
-    /// 停止标志。
+    /// Stop flag.
     stop: Arc<AtomicBool>,
-    /// 完成回调（可选）。
+    /// Completion callback (optional).
     on_complete: Arc<Mutex<Option<Box<dyn Fn(Task, UpdateResult) + Send + Sync>>>>,
 }
 
 impl IndexingQueue {
-    /// 创建队列并启动工作线程。
+    /// Create the queue and start the worker thread.
     pub fn new(handler: Arc<dyn TaskHandler>) -> Self {
         let (sender, receiver) = unbounded::<Task>();
         let pending = Arc::new(Mutex::new(HashSet::new()));
@@ -112,7 +112,7 @@ impl IndexingQueue {
         }
     }
 
-    /// 设置任务完成回调（用于通知 UI 更新进度）。
+    /// Set the task-completion callback (used to notify the UI of progress updates).
     pub fn on_complete<F>(&self, callback: F)
     where
         F: Fn(Task, UpdateResult) + Send + Sync + 'static,
@@ -120,12 +120,12 @@ impl IndexingQueue {
         *self.on_complete.lock() = Some(Box::new(callback));
     }
 
-    /// 入队一个任务。
+    /// Enqueue a task.
     ///
-    /// 去重：如果队列里已有同 index_id 的 Update 任务，新的 Update 被丢弃。
-    /// Rebuild 不去重（强制重建）。
+    /// Deduplication: if an Update task with the same index_id is already in the queue, the new Update is dropped.
+    /// Rebuild is not deduplicated (forces a rebuild).
     pub fn enqueue(&self, mut task: Task) -> Result<()> {
-        // 去重检查
+        // Deduplication check
         if task.action == IndexAction::Update {
             let mut pending = self.pending.lock();
             if pending.contains(&task.index_id) {
@@ -140,25 +140,25 @@ impl IndexingQueue {
             .map_err(|e| pivotsearch_contracts::PivotsearchError::IndexIo(format!("enqueue: {e}")))
     }
 
-    /// 便捷方法：入队一个 Update 任务。
+    /// Convenience method: enqueue an Update task.
     pub fn enqueue_update(&self, index_id: &str) -> Result<()> {
         self.enqueue(Task::update(index_id))
     }
 
-    /// 便捷方法：入队一个 Rebuild 任务。
+    /// Convenience method: enqueue a Rebuild task.
     pub fn enqueue_rebuild(&self, index_id: &str) -> Result<()> {
         self.enqueue(Task::rebuild(index_id))
     }
 
-    /// 当前待处理任务数。
+    /// Current number of pending tasks.
     pub fn pending_count(&self) -> usize {
         self.pending.lock().len()
     }
 
-    /// 停止队列（等当前任务完成）。
+    /// Stop the queue (waits for the current task to finish).
     pub fn shutdown(&self) {
         self.stop.store(true, Ordering::SeqCst);
-        // 发送一个哨兵任务唤醒阻塞的 worker
+        // Send a sentinel task to wake the blocked worker
         let _ = self.sender.send(Task::update("__shutdown__"));
         if let Some(worker) = self.worker.lock().take() {
             let _ = worker.join();
@@ -174,7 +174,7 @@ impl Drop for IndexingQueue {
     }
 }
 
-/// 工作线程循环：串行处理任务。
+/// Worker thread loop: processes tasks serially.
 fn worker_loop(
     receiver: Receiver<Task>,
     handler: Arc<dyn TaskHandler>,
@@ -185,10 +185,10 @@ fn worker_loop(
     while !stop.load(Ordering::SeqCst) {
         let task = match receiver.recv() {
             Ok(t) => t,
-            Err(_) => break, // sender 断开
+            Err(_) => break, // sender disconnected
         };
 
-        // 哨兵任务
+        // Sentinel task
         if task.index_id == "__shutdown__" {
             break;
         }
@@ -197,7 +197,7 @@ fn worker_loop(
 
         let result = handler.handle(&task.index_id, task.action);
 
-        // 从 pending 移除
+        // Remove from pending
         pending.lock().remove(&task.index_id);
 
         match &result {
@@ -226,7 +226,7 @@ mod tests {
     use super::*;
     use std::sync::atomic::AtomicUsize;
 
-    /// 测试用 handler：记录调用次数。
+    /// Test handler: records call count.
     struct CountingHandler {
         count: Arc<AtomicUsize>,
     }
@@ -248,10 +248,10 @@ mod tests {
         queue.enqueue_update("idx-2").unwrap();
         queue.enqueue_update("idx-3").unwrap();
 
-        // 等待任务完成
+        // Wait for tasks to complete
         std::thread::sleep(std::time::Duration::from_millis(500));
 
-        assert_eq!(count.load(Ordering::SeqCst), 3, "应执行 3 个任务");
+        assert_eq!(count.load(Ordering::SeqCst), 3, "should execute 3 tasks");
         assert_eq!(queue.pending_count(), 0);
     }
 
@@ -261,18 +261,18 @@ mod tests {
         let handler = Arc::new(CountingHandler { count: count.clone() });
         let queue = IndexingQueue::new(handler);
 
-        // 快速连续入队 5 个同 index_id 的 Update
+        // Rapidly enqueue 5 Updates with the same index_id in succession
         for _ in 0..5 {
             queue.enqueue_update("idx-1").unwrap();
         }
 
         std::thread::sleep(std::time::Duration::from_millis(500));
 
-        // 由于去重，应只执行 1 次
+        // Due to deduplication, it should only execute once
         assert_eq!(
             count.load(Ordering::SeqCst),
             1,
-            "同 index_id 的冗余 Update 应去重为 1 次"
+            "redundant Updates with the same index_id should be deduplicated to 1"
         );
     }
 
@@ -293,7 +293,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(500));
 
         let r = results.lock();
-        assert!(!r.is_empty(), "应有完成回调");
+        assert!(!r.is_empty(), "should have a completion callback");
         assert_eq!(r[0], UpdateResult::SuccessChanged);
     }
 }

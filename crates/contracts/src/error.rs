@@ -1,29 +1,30 @@
-//! pivotsearch 统一错误类型。
+//! Unified error type for pivotsearch.
 
 use thiserror::Error;
 
-/// pivotsearch 所有组件返回的统一错误类型。
+/// Unified error type returned by all pivotsearch components.
 ///
-/// 设计原则：区分可重试（IO 瞬时失败）与永久（格式不支持、文件损坏），
-/// 调用方可据此决定重试策略。
+/// Design principle: distinguish retryable (transient IO failures) from
+/// permanent (unsupported format, corrupted file); the caller can decide a
+/// retry strategy accordingly.
 #[derive(Debug, Error)]
 pub enum PivotsearchError {
-    /// 不支持的文件格式（如 .doc/.ppt 老格式）。
-    /// 提示用户转换为现代格式。
+    /// Unsupported file format (e.g. legacy .doc/.ppt formats).
+    /// Suggest the user convert to a modern format.
     #[error("unsupported format: .{0}, please convert to a modern format")]
     UnsupportedFormat(String),
 
-    /// 文件解析失败（损坏的 PDF、编码错误等）。
-    /// 文件本身的问题，重试无意义。
+    /// File parse failure (corrupted PDF, encoding errors, etc.).
+    /// A problem with the file itself; retrying is pointless.
     #[error("parse failed for {path}: {reason}")]
     ParseFailed { path: String, reason: String },
 
-    /// 索引 IO 错误（Tantivy 读写失败）。
-    /// 可能瞬时，可重试。
+    /// Index IO error (Tantivy read/write failure).
+    /// Possibly transient; may be retried.
     #[error("index io error: {0}")]
     IndexIo(String),
 
-    /// 文件系统 IO 错误。
+    /// Filesystem IO error.
     #[error("fs io error at {path}: {source}")]
     FsIo {
         path: String,
@@ -31,22 +32,22 @@ pub enum PivotsearchError {
         source: std::io::Error,
     },
 
-    /// SQLite 元数据错误。
+    /// SQLite metadata error.
     #[error("sqlite error: {0}")]
     Sqlite(String),
 
-    /// 索引根路径冲突（包含/被包含已有索引）。
+    /// Index root path conflict (contains / is contained by an existing index).
     #[error("index path conflict: {0}")]
     PathConflict(String),
 
-    /// schema 版本不匹配（需 reindex）。
+    /// Schema version mismatch (reindex required).
     #[error("schema version mismatch: indexed={indexed}, current={current}, reindex required")]
     SchemaMismatch { indexed: u32, current: u32 },
 
-    /// 其他未分类错误。
+    /// Other uncategorized error.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
-/// 便捷 Result 别名。
+/// Convenience Result alias.
 pub type Result<T> = std::result::Result<T, PivotsearchError>;

@@ -23,7 +23,7 @@ import { useI18n } from "./composables/useI18n";
 
 const { locale, t, toggleLocale } = useI18n();
 
-// ═══ 面板宽度（可拖动分隔栏）═══
+// ── Panel width (draggable splitter) ──
 const panelWidth = ref(50); // result-list width as a percentage
 let isDragging = false;
 
@@ -53,19 +53,19 @@ function closePreview() {
   previewData.value = null;
 }
 
-// ═══ 搜索状态 ═══
+// ── Search state ──
 const query = ref("");
 const results = ref<SearchResult[]>([]);
 const totalHits = ref(0);
 const loading = ref(false);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-// ═══ 选中/预览状态 ═══
+// ── Selection / preview state ──
 const selectedIndex = ref(-1);
 const previewData = ref<PreviewData | null>(null);
 const previewLoading = ref(false);
 
-// ═══ 索引管理 ═══
+// ── Index management ──
 const indexes = ref<IndexInfo[]>([]);
 const showIndexDialog = ref(false);
 const newPath = ref("");
@@ -73,14 +73,14 @@ const progressMsg = ref("");
 const indexProgress = ref<{ processed: number; total: number; pct: number } | null>(null);
 const isIndexing = ref(false);
 
-// ═══ 索引详情对话框 ═══
+// ── Index detail dialog ──
 const detailDialog = ref(false);
 const indexDetail = ref<any>(null);
 let unlistenProgress: (() => void) | null = null;
 
-// ═══ 文件类型筛选 ═══
+// ── File type filter ──
 const filterType = ref(""); // empty = all
-// ═══ 大小写敏感 ═══
+// ── Case sensitivity ──
 const caseSensitive = ref(false);
 const typeOptions = computed(() => [
   { label: t("typeAll"), value: "" },
@@ -93,7 +93,7 @@ const typeOptions = computed(() => [
   { label: t("typeText"), value: "txt" },
 ]);
 
-// ═══ 搜索范围（索引下拉）═══
+// ── Search scope (index dropdown) ──
 const searchScope = ref(""); // empty = all indexes
 const scopeOptions = computed(() => [
   { label: t("allScopes"), value: "" },
@@ -103,7 +103,7 @@ const scopeOptions = computed(() => [
   })),
 ]);
 
-// ═══ 过滤后的结果 ═══
+// ── Filtered results ──
 const filteredResults = computed(() => {
   if (!filterType.value) return results.value;
   return results.value.filter(
@@ -111,7 +111,7 @@ const filteredResults = computed(() => {
   );
 });
 
-// ═══ 即时搜索 ═══
+// ── Instant search ──
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
   if (!query.value.trim()) {
@@ -140,7 +140,7 @@ async function doSearch() {
   }
 }
 
-// ═══ 点击结果项 → 加载预览 ═══
+// ── Click a result item -> load preview ──
 async function selectResult(index: number) {
   selectedIndex.value = index;
   const result = filteredResults.value[index];
@@ -157,7 +157,7 @@ async function selectResult(index: number) {
   }
 }
 
-// ═══ 键盘导航 ═══
+// ── Keyboard navigation ──
 function onKeydown(e: KeyboardEvent) {
   if (e.key === "ArrowDown") {
     e.preventDefault();
@@ -175,7 +175,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// ═══ 预览内容高亮 ═══
+// ── Preview content highlighting ──
 function renderPreviewContent(content: string): string {
   if (!query.value || !content) return escapeHtml(content);
   const terms = query.value.split(/\s+/).filter(Boolean);
@@ -201,8 +201,8 @@ function renderSnippet(snippet: string): string {
   return snippet.replace(/<b>/g, '<mark>').replace(/<\/b>/g, "</mark>");
 }
 
-// ═══ 格式化 ═══
-// ═══ 文件操作按钮 ═══
+// ── Formatting ──
+// ── File action buttons ──
 async function onCopyPath(path: string) {
   try {
     await copyToClipboard(path);
@@ -250,7 +250,7 @@ function formatDate(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// ═══ 从路径提取带后缀的文件名 ═══
+// ── Extract the filename (with extension) from a path ──
 function fileName(path: string): string {
   const parts = path.replace(/\\/g, "/").split("/");
   return parts[parts.length - 1] || path;
@@ -266,7 +266,7 @@ function fileIcon(path: string): string {
   return icons[ext || ""] || "📄";
 }
 
-// ═══ 索引管理 ═══
+// ── Index management ──
 async function refreshIndexes() {
   try {
     indexes.value = await listIndexes();
@@ -275,7 +275,7 @@ async function refreshIndexes() {
   }
 }
 
-// ═══ 目录选择对话框 ═══
+// ── Folder picker dialog ──
 async function browseFolder() {
   try {
     const selected = await openDialog({
@@ -324,14 +324,14 @@ async function onRebuildIndex(id: string) {
   }
 }
 
-// ═══ 空状态判断 ═══
+// ── Empty-state flags ──
 const hasSearched = computed(() => query.value.length > 0);
 const noIndexes = computed(() => indexes.value.length === 0);
 const noResults = computed(
   () => hasSearched.value && !loading.value && filteredResults.value.length === 0
 );
 
-// ═══ 生命周期 ═══
+// ── Lifecycle ──
 onMounted(async () => {
   await refreshIndexes();
   unlistenProgress = await onIndexProgress((p: IndexProgress) => {
@@ -352,7 +352,7 @@ onMounted(async () => {
       indexProgress.value = { processed: p.processed, total: p.total, pct };
     }
   });
-  // 聚焦搜索框
+  // Focus the search box
   setTimeout(() => {
     document.querySelector<HTMLInputElement>(".search-input input")?.focus();
   }, 100);
@@ -485,7 +485,7 @@ onUnmounted(() => {
             <p class="hint">{{ t('noResultsHint') }}</p>
           </div>
 
-          <!-- 结果列表 -->
+          <!-- Result list -->
           <div
             v-for="(r, i) in filteredResults"
             :key="r.uid"
@@ -691,7 +691,7 @@ body {
   outline: none;
 }
 
-/* ═══ 顶部搜索栏 ═══ */
+/* ── Top search bar ── */
 .topbar {
   display: flex;
   align-items: center;
@@ -787,14 +787,14 @@ body {
   color: var(--ps-primary);
 }
 
-/* ═══ 主体 ═══ */
+/* ── Main body ── */
 .main-body {
   flex: 1;
   overflow: hidden;
   display: flex;
 }
 
-/* 欢迎屏 */
+/* Welcome screen */
 .welcome-screen {
   flex: 1;
   display: flex;
@@ -825,14 +825,14 @@ body {
   line-height: 1.6;
 }
 
-/* 结果布局 */
+/* Result layout */
 .result-layout {
   flex: 1;
   display: flex;
   overflow: hidden;
 }
 
-/* 左：结果列表 */
+/* Left: result list */
 .result-panel {
   overflow-y: auto;
   background: var(--ps-surface);
@@ -972,7 +972,7 @@ body {
   background: #e8e8e8;
 }
 
-/* 可拖动分隔栏 */
+/* Draggable splitter */
 .splitter {
   width: 5px;
   flex-shrink: 0;
@@ -987,7 +987,7 @@ body {
   background: var(--ps-primary);
 }
 
-/* 右：预览面板 */
+/* Right: preview panel */
 .preview-panel {
   flex: 1;
   min-width: 200px;
@@ -1066,7 +1066,7 @@ body {
   margin-bottom: 8px;
 }
 
-/* ═══ 底部状态栏 ═══ */
+/* ── Bottom status bar ── */
 .statusbar {
   padding: 6px 16px;
   background: var(--ps-surface);
@@ -1086,7 +1086,7 @@ body {
   color: var(--ps-primary);
 }
 
-/* ═══ 索引管理对话框 ═══ */
+/* ── Index management dialog ── */
 .index-add {
   display: flex;
   gap: 8px;
@@ -1146,7 +1146,7 @@ body {
   font-size: 12px;
 }
 
-/* Element Plus 覆盖 */
+/* Element Plus overrides */
 .el-input__wrapper {
   border-radius: 6px;
 }

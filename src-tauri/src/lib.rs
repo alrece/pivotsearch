@@ -1,6 +1,6 @@
-//! pivotsearch Tauri 后端：#[tauri::command] 桥接核心引擎给前端。
+//! pivotsearch Tauri backend: bridges the core engine to the frontend via #[tauri::command].
 //!
-//! 这是组装根——可以 import parser/index/search 的具体实现。
+//! This is the assembly root — it can import concrete parser/index/search implementations.
 
 mod state;
 
@@ -18,7 +18,7 @@ use tantivy::Index;
 
 pub use state::EngineState;
 
-// ── 命令的参数/返回类型（前端 TS 对齐）──
+// ── Command parameter / return types (aligned with the frontend TS) ──
 
 #[derive(Serialize)]
 pub struct IndexInfo {
@@ -43,12 +43,12 @@ pub struct IndexProgress {
     total: usize,
     message: String,
     phase: String,  // "indexing" / "done" / "error"
-    name: String,   // 索引显示名（如 "Documents"）
+    name: String,   // index display name (e.g. "Documents")
 }
 
-// ── 命令实现 ──
+// ── Command implementations ──
 
-/// 添加一个索引根（后台线程索引）。
+/// Add an index root (indexed in a background thread).
 #[tauri::command]
 async fn add_index(
     path: String,
@@ -60,14 +60,14 @@ async fn add_index(
         return Err(format!("不是目录: {path}"));
     }
 
-    // 生成 index_id（路径的 hash）
+    // Generate the index_id (hash of the path)
     let index_id = format!("idx-{:x}", md5_hash(&path));
     let display_name = root
         .file_name()
         .and_then(|n| n.to_str())
         .map(|s| s.to_string());
 
-    // 在数据目录下创建索引存储
+    // Create index storage under the data directory
     let data_dir = app
         .path()
         .app_data_dir()
@@ -75,12 +75,13 @@ async fn add_index(
     let index_dir = data_dir.join("indexes").join(&index_id);
     std::fs::create_dir_all(&index_dir).map_err(|e| format!("创建索引目录失败: {e}"))?;
 
-    // 构造 schema + index + tree_index（全部移入后台线程）
+    // Build schema + index + tree_index (all moved into the background thread)
     let (schema, fields, _tokenizer_manager) = build_schema();
     let tantivy_dir = index_dir.join("tantivy");
     std::fs::create_dir_all(&tantivy_dir).map_err(|e| e.to_string())?;
 
-    // open-or-create：如果索引已存在（重启后再添加同一路径），open 而非 create
+    // open-or-create: if the index already exists (same path re-added after a restart),
+    // open it instead of creating it.
     let tantivy_meta = tantivy_dir.join("meta.json");
     let index = if tantivy_meta.exists() {
         Index::open_in_dir(&tantivy_dir).map_err(|e| e.to_string())?
@@ -94,18 +95,19 @@ async fn add_index(
 
     let tree_index_path = index_dir.join("tree_index.sqlite");
     let tree_index = TreeIndex::open(&tree_index_path).map_err(|e| e.to_string())?;
-    // add_index_root 用 INSERT OR IGNORE，重复添加同一路径不会报错
+    // add_index_root uses INSERT OR IGNORE, so re-adding the same path does not error.
     tree_index
         .add_index_root(&index_id, &path, display_name.as_deref(), now_millis())
         .map_err(|e| e.to_string())?;
 
-    // 记录 index_dir 到 state（search 时重新 open）
+    // Record the index_dir in state (reopened at search time)
     {
         let mut s = state.lock();
         s.index_dirs.insert(index_id.clone(), index_dir.clone());
     }
 
-    // 后台线程执行索引（fields/index/tree_index 全部移入，不阻塞命令返回）
+    // Run indexing in a background thread (fields/index/tree_index all moved in,
+    // so the command return is not blocked)
     let app_clone = app.clone();
     let index_id_clone = index_id.clone();
     let config = IncrementalConfig {
@@ -176,7 +178,8 @@ async fn add_index(
     Ok(index_id)
 }
 
-/// 执行搜索：从 state 读所有 index_dirs，重新 open 每个 Tantivy Index，合并查询。
+/// Run a search: read all index_dirs from state, reopen each Tantivy Index,
+/// and merge the query results.
 #[tauri::command]
 async fn search(
     query: String,
@@ -199,7 +202,7 @@ async fn search(
         });
     }
 
-    // 为每个索引构造 SimpleSearcher，加入 MultiIndexSearcher
+    // Build a SimpleSearcher for each index and add it to the MultiIndexSearcher
     let mut multi = MultiIndexSearcher::new();
     let (_schema, fields, tokenizer_manager) = build_schema();
 
@@ -252,7 +255,8 @@ async fn search(
     multi.search(&request).map_err(|e| e.to_string())
 }
 
-/// 获取预览数据：从 uid 反推 path，重新解析原文件返回完整 content。
+/// Fetch preview data: derive the path from the uid, re-parse the original file,
+/// and return the full content.
 #[tauri::command]
 async fn get_preview(uid: String) -> Result<serde_json::Value, String> {
     let path_str = uid.strip_prefix("file://").unwrap_or(&uid);
@@ -268,7 +272,7 @@ async fn get_preview(uid: String) -> Result<serde_json::Value, String> {
         }));
     }
 
-    // 用 parser 注册表重新解析原文件
+    // Re-parse the original file using the parser registry
     let registry = ParserRegistryImpl::with_builtin_parsers().with_pdf();
     match registry.parse(&path) {
         Ok(result) => Ok(serde_json::json!({
@@ -288,7 +292,8 @@ async fn get_preview(uid: String) -> Result<serde_json::Value, String> {
     }
 }
 
-/// 列出所有索引根：从 state.index_dirs 读，对每个打开 tree_index 取信息。
+/// List all index roots: read state.index_dirs, then open the tree_index for each
+/// to gather their info.
 #[tauri::command]
 async fn list_indexes(
     state: State<'_, Arc<Mutex<EngineState>>>,
@@ -315,7 +320,7 @@ async fn list_indexes(
                 }
             }
             Err(_) => {
-                // tree_index 未就绪（索引进行中），显示基本信息
+                // tree_index not ready (indexing in progress); show basic info
                 infos.push(IndexInfo {
                     id: index_id.clone(),
                     path: index_dir.display().to_string(),
@@ -328,7 +333,8 @@ async fn list_indexes(
     Ok(infos)
 }
 
-/// 移除索引根：删 Tantivy 目录 + tree_index + 从 state 移除。
+/// Remove an index root: delete the Tantivy directory + tree_index, and remove it
+/// from state.
 #[tauri::command]
 async fn remove_index(
     id: String,
@@ -339,18 +345,18 @@ async fn remove_index(
         s.index_dirs.remove(&id)
     };
     if let Some(dir) = index_dir {
-        // 删 tree_index 记录
+        // Remove the tree_index record
         let tree_path = dir.join("tree_index.sqlite");
         if let Ok(ti) = TreeIndex::open(&tree_path) {
             let _ = ti.remove_index_root(&id);
         }
-        // 删整个索引目录
+        // Delete the entire index directory
         let _ = std::fs::remove_dir_all(&dir);
     }
     Ok(())
 }
 
-/// 重建索引：清空后重新全量索引（后台线程）。
+/// Rebuild an index: clear it and re-run a full index pass (in a background thread).
 #[tauri::command]
 async fn rebuild_index(
     id: String,
@@ -434,7 +440,7 @@ async fn rebuild_index(
     Ok(())
 }
 
-/// 复制文本到系统剪贴板。
+/// Copy text to the system clipboard.
 #[tauri::command]
 async fn copy_to_clipboard(
     text: String,
@@ -446,7 +452,7 @@ async fn copy_to_clipboard(
         .map_err(|e| e.to_string())
 }
 
-/// 在系统文件管理器中打开文件所在目录（高亮该文件）。
+/// Open the file's containing folder in the system file manager (highlighting the file).
 #[tauri::command]
 async fn open_in_folder(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
@@ -456,7 +462,7 @@ async fn open_in_folder(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-        // macOS: open -R <path> 在 Finder 中高亮文件
+        // macOS: `open -R <path>` highlights the file in Finder
         std::process::Command::new("open")
             .args(["-R", &path])
             .spawn()
@@ -472,7 +478,7 @@ async fn open_in_folder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "linux")]
     {
-        // Linux: 打开文件所在目录
+        // Linux: open the file's containing directory
         let dir = p.parent().unwrap_or(p).to_string_lossy().to_string();
         std::process::Command::new("xdg-open")
             .arg(&dir)
@@ -482,18 +488,19 @@ async fn open_in_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
-/// 安装 psearch CLI 到系统 PATH。
+/// Install the psearch CLI onto the system PATH.
 #[tauri::command]
 async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
-    // 通用方式：用 current_exe 定位 sidecar（sidecar 和主程序在同一目录）
+    // Generic approach: locate the sidecar via current_exe (the sidecar ships
+    // in the same directory as the main program)
     let exe_path = std::env::current_exe().map_err(|e| format!("无法定位可执行文件: {e}"))?;
     let exe_dir = exe_path.parent().ok_or("无法获取可执行文件目录")?;
 
-    // 尝试多个可能的 sidecar 文件名
+    // Try several possible sidecar filenames
     let candidates: Vec<std::path::PathBuf> = vec![
         exe_dir.join("psearch"),
         exe_dir.join("psearch.exe"),
-        // macOS .app bundle 内的 Contents/MacOS/psearch
+        // psearch inside an macOS .app bundle at Contents/MacOS/psearch
         exe_dir.join("../../../MacOS/psearch"),
     ];
 
@@ -525,14 +532,14 @@ async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
-        // Windows: 复制 psearch.exe 到用户目录并加入 PATH
+        // Windows: copy psearch.exe to the user directory and add it to PATH
         let home = dirs::home_dir().ok_or("无法获取用户目录")?;
         let bin_dir = home.join(".psearch");
         std::fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
         let target = bin_dir.join("psearch.exe");
         std::fs::copy(&psearch_real, &target).map_err(|e| format!("复制文件失败: {e}"))?;
 
-        // 使用 setx 将目录加入用户 PATH（setx 有 1024 字符限制）
+        // Add the directory to the user PATH via setx (setx has a 1024-character limit)
         let current_path = std::env::var("PATH").unwrap_or_default();
         let bin_dir_str = bin_dir.to_string_lossy().to_string();
         if !current_path.contains(&bin_dir_str) {
@@ -545,7 +552,7 @@ async fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
     }
 }
 
-/// 获取索引详细信息（双击索引行查看）。
+/// Fetch index details (shown when double-clicking an index row).
 #[tauri::command]
 async fn index_details(
     id: String,
@@ -607,7 +614,7 @@ async fn index_details(
     }))
 }
 
-// ── 辅助函数 ──
+// ── Helper functions ──
 
 fn md5_hash(s: &str) -> u64 {
     use std::hash::{Hash, Hasher};
@@ -623,7 +630,7 @@ fn now_millis() -> i64 {
         .unwrap_or(0)
 }
 
-// ── Tauri 应用入口 ──
+// ── Tauri application entry point ──
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -633,7 +640,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(Arc::new(Mutex::new(EngineState::new())))
         .setup(|app| {
-            // 启动时从磁盘恢复已有索引到 state
+            // At startup, restore existing indexes from disk into state
             let state = app.state::<Arc<Mutex<EngineState>>>();
             if let Ok(data_dir) = app.path().app_data_dir() {
                 let indexes_dir = data_dir.join("indexes");

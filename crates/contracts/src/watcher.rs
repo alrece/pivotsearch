@@ -1,10 +1,10 @@
-//! Watcher trait + WatchEvent。
+//! Watcher trait + WatchEvent.
 
 use crate::error::Result;
 use crate::types::IndexId;
 use std::path::Path;
 
-/// 文件监听事件（去抖、过滤后的有效事件）。
+/// File watcher event (a valid event after debouncing and filtering).
 #[derive(Debug, Clone)]
 pub struct WatchEvent {
     pub index_id: IndexId,
@@ -12,26 +12,27 @@ pub struct WatchEvent {
     pub path: String,
 }
 
-/// 事件种类。
+/// Event kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WatchEventKind {
     Create,
     Modify,
     Remove,
-    /// 目录级"有变化需重扫"提示（macOS FSEvents 常见）。
+    /// Directory-level "something changed, rescan needed" hint (common with macOS FSEvents).
     RescanHint,
 }
 
-/// 文件监听器抽象（具体实现在 watcher crate）。
+/// File watcher abstraction (concrete implementation in the watcher crate).
 ///
-/// 监听器只负责产出有效事件，索引更新由 queue 消费。
+/// The watcher is only responsible for producing valid events; index updates
+/// are consumed by the queue.
 pub trait Watcher: Send + Sync {
-    /// 开始监听一个索引根目录。
+    /// Start watching an index root directory.
     fn watch(&self, index_id: &str, path: &Path) -> Result<()>;
 
-    /// 停止监听一个索引根目录。
+    /// Stop watching an index root directory.
     fn unwatch(&self, index_id: &str) -> Result<()>;
 
-    /// 列出当前正在监听的索引根。
+    /// List the index roots currently being watched.
     fn watched_indexes(&self) -> Vec<String>;
 }

@@ -1,10 +1,10 @@
-//! 电子表格解析器（calamine）：xlsx/xls/csv。
+//! Spreadsheet parser (calamine): xlsx/xls/csv.
 
 use calamine::{open_workbook, Data, Reader, Xlsx};
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::path::Path;
 
-/// 电子表格解析器。用 calamine 读取所有 sheet 所有单元格的值，拼成文本。
+/// Spreadsheet parser. Uses calamine to read all cells across all sheets and joins them into text.
 pub struct SpreadsheetParser;
 
 impl Parser for SpreadsheetParser {
@@ -34,7 +34,7 @@ impl Parser for SpreadsheetParser {
             }
             content.push_str(&format!("[{sheet_name}]\n"));
 
-            // 遍历所有行所有单元格
+            // Iterate over all rows and all cells
             for row in range.rows() {
                 let mut row_text = Vec::new();
                 for cell in row {
@@ -50,7 +50,7 @@ impl Parser for SpreadsheetParser {
                     };
                     row_text.push(cell_str);
                 }
-                // 跳过全空行
+                // Skip fully empty rows
                 if row_text.iter().any(|s| !s.is_empty()) {
                     content.push_str(&row_text.join("\t"));
                     content.push('\n');

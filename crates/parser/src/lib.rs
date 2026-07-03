@@ -1,6 +1,6 @@
 //! # pivotsearch-parser
 //!
-//! 解析层：Parser 注册表 + 各格式解析器实现。
+//! Parsing layer: parser registry + per-format parser implementations.
 
 pub mod registry;
 pub mod text;

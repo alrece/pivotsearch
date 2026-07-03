@@ -1,23 +1,25 @@
-//! Parser trait + ParseResult + ParserRegistry。
+//! Parser trait + ParseResult + ParserRegistry.
 
 use crate::error::Result;
 use crate::types::Uid;
 use std::path::Path;
 
-/// 单个文件解析的结果（纯数据结构）。
+/// Result of parsing a single file (pure data structure).
 ///
-/// 解析层与写入层解耦：Parser 只产出本结构，由 index crate 组装 Tantivy Document。
+/// The parsing layer is decoupled from the writing layer: the Parser only
+/// produces this struct, and the index crate assembles the Tantivy Document.
 #[derive(Debug, Clone, Default)]
 pub struct ParseResult {
-    /// 正文纯文本（必需，可为空——如纯图片 PDF 无文字层）。
+    /// Plain text of the document body (required; may be empty — e.g. an
+    /// image-only PDF with no text layer).
     pub content: String,
-    /// 标题（无则由 index crate 退化为去扩展名文件名）。
+    /// Title (if absent, the index crate falls back to the file name without extension).
     pub title: Option<String>,
-    /// 作者列表。
+    /// List of authors.
     pub authors: Vec<String>,
-    /// 其他元数据（Subject/Keywords 等），拼接到 content 一起索引。
+    /// Other metadata (Subject/Keywords, etc.), appended to content for indexing.
     pub misc_metadata: Vec<String>,
-    /// 解析器名（由 ParserRegistry 注入，而非 Parser 自设）。
+    /// Parser name (injected by ParserRegistry, not self-set by the Parser).
     pub parser_name: &'static str,
 }
 
@@ -33,41 +35,42 @@ impl ParseResult {
     }
 }
 
-/// 文件解析器 trait。
+/// File parser trait.
 ///
-/// 每种格式实现一个 Parser，注册到 ParserRegistry。
-/// 选择策略：mime 优先（魔数检测）→ 扩展名 fallback → 多 parser 容错尝试。
+/// Each format implements a Parser and registers it in the ParserRegistry.
+/// Selection strategy: mime first (magic-byte detection) → extension fallback
+/// → multi-parser fault-tolerant attempts.
 pub trait Parser: Send + Sync {
-    /// 该 parser 处理的扩展名（小写，无点），如 ["pdf"]。
+    /// Extensions this parser handles (lowercase, no dot), e.g. ["pdf"].
     fn extensions(&self) -> &[&str];
 
-    /// 该 parser 声明的 mime 类型，如 ["application/pdf"]。
+    /// Mime types this parser declares, e.g. ["application/pdf"].
     fn mimes(&self) -> &[&str];
 
-    /// 解析单个文件，产出纯文本结果。
+    /// Parse a single file and produce a plain-text result.
     fn parse(&self, path: &Path) -> Result<ParseResult>;
 
-    /// parser 名（用于 ParseResult.parser_name 注入和索引字段）。
+    /// Parser name (used for ParseResult.parser_name injection and the index field).
     fn name(&self) -> &'static str;
 }
 
-/// Parser 注册表的抽象（具体实现在 parser crate）。
-/// 通过此 trait 让 core 编排层不依赖具体实现。
+/// Abstraction of the parser registry (concrete implementation in the parser crate).
+/// This trait lets the core orchestration layer avoid depending on a concrete implementation.
 pub trait ParserRegistry: Send + Sync {
-    /// 按两级策略选择 parser 并解析。
-    /// 1. mime 检测命中 → 按匹配度排序依次尝试（容错）
-    /// 2. 扩展名 fallback → 精确匹配第一个
-    /// 3. 兜底 → UnsupportedFormat 或仅索引文件名
+    /// Select a parser via the two-level strategy and parse.
+    /// 1. Mime detection hit → try in order of match quality (fault tolerance)
+    /// 2. Extension fallback → first exact match
+    /// 3. Last resort → UnsupportedFormat or index only the file name
     fn parse(&self, path: &Path) -> Result<ParseResult>;
 
-    /// 判断扩展名是否可被任一 parser 处理（watcher 事件过滤用）。
+    /// Whether the extension can be handled by any parser (used for watcher event filtering).
     fn can_parse_by_name(&self, file_name: &str) -> bool;
 
-    /// 列出所有已注册 parser 的名（调试/设置页用）。
+    /// List the names of all registered parsers (for debugging/settings page).
     fn list_parser_names(&self) -> Vec<&'static str>;
 }
 
-/// 内部使用的 UID 提取（从 uid 反推 path）。
+/// UID extraction used internally (recover path from uid).
 pub fn extract_path_from_uid(uid: &Uid) -> Option<&str> {
     uid.strip_prefix("file://")
 }

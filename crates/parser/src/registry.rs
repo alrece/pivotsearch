@@ -1,20 +1,20 @@
-//! Parser 注册表 + 两级选择策略。
+//! Parser registry + two-tier selection strategy.
 //!
-//! 设计（复刻经典桌面搜索工具的解析注册表模式，净室重写）：
-//! 1. mime 路径：infer 魔数检测 → 按匹配度排序 → 依次尝试直到成功（容错）
-//! 2. 扩展名路径：精确匹配扩展名取第一个 parser
-//! 3. 兜底：返回 UnsupportedFormat
+//! Design (clean-room reimplementation of the parser registry pattern from classic desktop search tools):
+//! 1. MIME path: infer magic-number detection → sort by match score → try in order until one succeeds (fault tolerance)
+//! 2. Extension path: exact extension match → pick the first matching parser
+//! 3. Fallback: return UnsupportedFormat
 
 use pivotsearch_contracts::{ParseResult, Parser, ParserRegistry, PivotsearchError, Result};
 use std::path::Path;
 
-/// Parser 注册表的默认实现。
+/// Default implementation of the parser registry.
 pub struct ParserRegistryImpl {
     parsers: Vec<Box<dyn Parser>>,
 }
 
 impl ParserRegistryImpl {
-    /// 用全部内置 parser 构造注册表。
+    /// Builds the registry with all built-in parsers.
     pub fn with_builtin_parsers() -> Self {
         let parsers: Vec<Box<dyn Parser>> = vec![
             Box::new(crate::text::TextParser),
@@ -28,13 +28,13 @@ impl ParserRegistryImpl {
         Self { parsers }
     }
 
-    /// 在默认基础上启用 PDF 解析。
+    /// Enables PDF parsing on top of the defaults.
     pub fn with_pdf(mut self) -> Self {
         self.parsers.push(Box::new(crate::pdf::PdfParser::default()));
         self
     }
 
-    /// 按扩展名精确查找第一个匹配的 parser。
+    /// Finds the first matching parser by exact extension lookup.
     fn find_by_extension(&self, file_name: &str) -> Option<&dyn Parser> {
         let ext = Path::new(file_name)
             .extension()
@@ -47,9 +47,9 @@ impl ParserRegistryImpl {
             .map(|p| p.as_ref())
     }
 
-    /// 按魔数 mime 检测，返回候选 parser（按扩展名额外匹配度排序）。
+    /// Detects MIME type via magic number and returns candidate parsers (further sorted by extension match score).
     fn find_by_mime(&self, path: &Path) -> Vec<&dyn Parser> {
-        // 读前 8K 字节做魔数检测
+        // Read the first 8K bytes for magic-number detection
         let bytes = std::fs::File::open(path)
             .and_then(|mut f| {
                 use std::io::Read;
@@ -82,7 +82,7 @@ impl ParserRegistryImpl {
                     .as_deref()
                     .map(|fe| p.extensions().contains(&fe))
                     .unwrap_or(false);
-                // mime 或扩展名任一匹配即为候选
+                // A MIME or extension match qualifies as a candidate
                 if mime_match || ext_match {
                     let score = (mime_match as usize) * 2 + (ext_match as usize);
                     Some((p, score))
@@ -92,7 +92,7 @@ impl ParserRegistryImpl {
             })
             .collect();
 
-        // 按分数降序（mime 优先）
+        // Sort by score descending (MIME takes priority)
         candidates.sort_by(|a, b| b.1.cmp(&a.1));
         candidates.into_iter().map(|(p, _)| p).collect()
     }
@@ -105,12 +105,12 @@ impl ParserRegistry for ParserRegistryImpl {
             .and_then(|n| n.to_str())
             .unwrap_or("");
 
-        // 归档穿透：zip/tar 解包后递归解析内部文件
+        // Archive traversal: unpack zip/tar and recursively parse inner files
         if crate::archive::is_archive(path) {
             return crate::archive::parse_archive(path, self);
         }
 
-        // 路径 1：魔数 mime 检测 → 多 parser 容错尝试
+        // Path 1: magic-number MIME detection → fault-tolerant multi-parser attempts
         let candidates = self.find_by_mime(path);
         if !candidates.is_empty() {
             for parser in &candidates {
@@ -123,17 +123,17 @@ impl ParserRegistry for ParserRegistryImpl {
                     Err(e) => return Err(e),
                 }
             }
-            // 所有候选都失败，落到扩展名路径
+            // All candidates failed; fall through to the extension path
         }
 
-        // 路径 2：扩展名精确匹配
+        // Path 2: exact extension match
         if let Some(parser) = self.find_by_extension(file_name) {
             let mut result = parser.parse(path)?;
             result.parser_name = parser.name();
             return Ok(result);
         }
 
-        // 路径 3：兜底
+        // Path 3: fallback
         let ext = Path::new(file_name)
             .extension()
             .and_then(|e| e.to_str())

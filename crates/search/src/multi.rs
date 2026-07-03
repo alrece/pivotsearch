@@ -1,20 +1,20 @@
-//! 多索引合并搜索。
+//! Multi-index merged search.
 //!
-//! 每个索引根一个 Tantivy Index（一索引根一目录设计）。
-//! MultiIndexSearcher 持有多个 (index_id, SimpleSearcher)，
-//! 各跑 top-N 查询，合并取全局 top-N。
+//! One Tantivy Index per index root (one-index-root-per-directory design).
+//! MultiIndexSearcher holds multiple (index_id, SimpleSearcher) pairs,
+//! running a top-N query against each and merging them into a global top-N.
 //!
-//! 支持过滤：
-//! - index_ids：限定搜索某些索引根（None = 搜全部）
-//! - parsers：按 parser 字段过滤
-//! - min_size/max_size：按 size 字段范围过滤
+//! Supported filters:
+//! - index_ids: restrict the search to certain index roots (None = search all)
+//! - parsers: filter by the parser field
+//! - min_size/max_size: range filter on the size field
 
 use crate::SimpleSearcher;
 use pivotsearch_contracts::{Result, SearchRequest, SearchResponse, SearchResult};
 
-/// 多索引搜索引擎。
+/// Multi-index search engine.
 pub struct MultiIndexSearcher {
-    /// index_id → (SimpleSearcher, 该索引的原始 index 用于重建 reader)
+    /// index_id → (SimpleSearcher, this index's original index for rebuilding the reader)
     searchers: Vec<(String, SimpleSearcher)>,
 }
 
@@ -23,24 +23,24 @@ impl MultiIndexSearcher {
         Self { searchers: Vec::new() }
     }
 
-    /// 添加一个索引根的 searcher。
+    /// Add a searcher for an index root.
     pub fn add(&mut self, index_id: String, searcher: SimpleSearcher) {
         self.searchers.push((index_id, searcher));
     }
 
-    /// 当前管理的索引根数量。
+    /// Number of index roots currently managed.
     pub fn index_count(&self) -> usize {
         self.searchers.len()
     }
 
-    /// 跨多索引搜索。
+    /// Search across multiple indexes.
     ///
-    /// 每个符合条件的索引各跑 top-N，合并后按全局排序取最终页。
+    /// Runs a top-N query against each qualifying index, merges the results, then sorts globally to take the final page.
     pub fn search(&self, request: &SearchRequest) -> Result<SearchResponse> {
         let page_size = pivotsearch_contracts::PAGE_SIZE;
         let _limit = (request.page + 1) * page_size;
 
-        // 决定要搜索哪些索引
+        // Determine which indexes to search
         let target_ids: Vec<&str> = match &request.index_ids {
             Some(ids) => ids.iter().map(|s| s.as_str()).collect(),
             None => self.searchers.iter().map(|(id, _)| id.as_str()).collect(),
@@ -50,11 +50,11 @@ impl MultiIndexSearcher {
         let mut total_hits = 0usize;
 
         for (index_id, searcher) in &self.searchers {
-            // 跳过不在 target 列表的索引
+            // Skip indexes not in the target list
             if !target_ids.contains(&index_id.as_str()) {
                 continue;
             }
-            // 每个索引查询 limit 条
+            // Query `limit` documents from each index
             let sub_request = SearchRequest {
                 query: request.query.clone(),
                 index_ids: None,
@@ -70,14 +70,14 @@ impl MultiIndexSearcher {
                     all_results.extend(response.results);
                 }
                 Err(e) => {
-                    // 单索引损坏不致命，跳过并记录
+                    // A single corrupted index is not fatal; skip it and log
                     tracing::warn!("索引 {} 查询失败，跳过: {}", index_id, e);
                 }
             }
         }
 
-        // 简单合并：按结果顺序（各索引内部已按相关性排序），不重新算分
-        // Phase 1 score=0，这里保持原顺序，取前 limit 后切片
+        // Simple merge: keep result order (each index is already sorted by relevance internally); do not recompute scores
+        // Phase 1 score=0, so keep the original order, take the first `limit`, then slice
         let start = request.page * page_size;
         let end = ((request.page + 1) * page_size).min(all_results.len());
 
@@ -110,8 +110,8 @@ impl Default for MultiIndexSearcher {
 
 #[cfg(test)]
 mod tests {
-    // 注意：多索引合并的完整测试需要构造多个 Tantivy Index，
-    // 这里只测试空搜索器的基本行为。完整集成测试在 cli 端到端验证。
+    // Note: full tests for multi-index merging require constructing multiple Tantivy indexes;
+    // here we only test the basic behavior of an empty searcher. Full integration tests are verified end-to-end in the cli.
     use super::*;
 
     #[test]

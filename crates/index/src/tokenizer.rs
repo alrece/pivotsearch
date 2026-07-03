@@ -1,27 +1,29 @@
-//! jieba 中文分词器（自定义 Tantivy Tokenizer）。
+//! jieba Chinese tokenizer (a custom Tantivy Tokenizer).
 //!
-//! 不依赖 tantivy-jieba crate（版本滞后跟踪 tantivy 0.20，与 0.24 不兼容），
-//! 而是参考其实现自写，版本完全可控。
+//! Does not depend on the tantivy-jieba crate (its version lags behind tantivy 0.20,
+//! making it incompatible with 0.24); instead we reimplement it ourselves for full
+//! version control.
 //!
-//! 设计：对中英混排文本，jieba 分词处理好中文部分，英文标识符整体保留。
+//! Design: for mixed Chinese/English text, jieba handles segmentation of the Chinese
+//! parts well, while English identifiers are kept whole.
 
 use jieba_rs::Jieba;
 use tantivy::tokenizer::{Token, TokenStream, Tokenizer};
 
-/// jieba 中文分词器。
+/// jieba Chinese tokenizer.
 ///
-/// 必须实现 Clone（tantivy Tokenizer trait 要求）。
-/// Jieba 内部用 Arc 共享词库数据，clone 廉价。
-/// 含停用词过滤（的、了、是等高频虚词），提升搜索精度。
+/// Must implement Clone (required by the tantivy Tokenizer trait).
+/// Jieba shares its dictionary data via Arc internally, so cloning is cheap.
+/// Includes stop-word filtering (high-frequency function words such as 的/了/是) to improve search precision.
 #[derive(Clone)]
 pub struct JiebaTokenizer {
-    /// 用 Arc 共享，clone 不复制词库。
+    /// Shared via Arc; cloning does not copy the dictionary.
     jieba: std::sync::Arc<Jieba>,
-    /// 停用词集合（Arc 共享，clone 廉价）。
+    /// Stop-word set (shared via Arc; cloning is cheap).
     stop_words: std::sync::Arc<std::collections::HashSet<&'static str>>,
 }
 
-/// 中文常见停用词（虚词/代词/量词等高频低信息量词）。
+/// Common Chinese stop words (function words / pronouns / classifiers — high-frequency, low-information words).
 const STOP_WORDS: &[&str] = &[
     "的", "了", "是", "在", "和", "也", "都", "就", "你", "我", "他", "她", "它",
     "这", "那", "有", "为", "以", "及", "或", "与", "但", "而", "所", "被", "把",
@@ -43,10 +45,10 @@ impl Tokenizer for JiebaTokenizer {
     type TokenStream<'a> = JiebaTokenStream<'a>;
 
     fn token_stream<'a>(&'a mut self, text: &'a str) -> Self::TokenStream<'a> {
-        // jieba 分词，HMM 模式提升未登录词召回
+        // jieba segmentation; HMM mode improves recall for out-of-vocabulary words
         let segmented: Vec<&str> = self.jieba.cut(text, true);
 
-        // 计算每个 token 的字节偏移（jieba 的 cut 返回引用切片，按原文本顺序）
+        // Compute the byte offset of each token (jieba's cut returns reference slices, in original-text order)
         let mut tokens = Vec::with_capacity(segmented.len());
         let mut byte_offset = 0usize;
         for (position, word) in segmented.into_iter().enumerate() {
@@ -55,7 +57,7 @@ impl Tokenizer for JiebaTokenizer {
                 byte_offset += word.len();
                 continue;
             }
-            // 停用词过滤（的、了、是等高频虚词）
+            // Stop-word filtering (high-frequency function words such as 的/了/是)
             if self.stop_words.contains(word_trimmed) {
                 byte_offset += word.len();
                 continue;
@@ -149,11 +151,11 @@ mod tests {
         while stream.advance() {
             words.push(stream.token().text.clone());
         }
-        // 停用词"的""是""一个"应被过滤
+        // Stop words 的/是/一个 should be filtered out
         assert!(!words.contains(&"的".to_string()), "的应被过滤");
         assert!(!words.contains(&"是".to_string()), "是应被过滤");
         assert!(!words.contains(&"一个".to_string()), "一个应被过滤");
-        // 实义词保留
+        // Content words are retained
         assert!(words.contains(&"公司".to_string()), "公司应保留");
     }
 }

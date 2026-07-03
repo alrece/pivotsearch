@@ -1,12 +1,13 @@
-//! 引擎全局状态（跨命令共享）。
+//! Global engine state (shared across commands).
 
 use std::collections::HashMap;
 
-/// 引擎状态：管理所有索引根的 searcher 和 tree_index。
+/// Engine state: manages searchers and tree_index for all index roots.
 ///
-/// Phase 4 MVP：基础结构。T11 完善时接入完整的索引管理。
+/// Phase 4 MVP: foundational structure. Full index management is wired
+/// up during T11 refinement.
 pub struct EngineState {
-    /// index_id → 索引目录路径。
+    /// index_id -> index directory path.
     pub index_dirs: HashMap<String, std::path::PathBuf>,
 }
 

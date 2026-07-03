@@ -1,32 +1,32 @@
-//! Searcher trait + 搜索请求/响应/结果。
+//! Searcher trait + search request/response/result.
 
 use crate::error::Result;
 use crate::types::{IndexId, Uid};
 use serde::{Deserialize, Serialize};
 
-/// 搜索请求。
+/// Search request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[derive(Default)]
 pub struct SearchRequest {
-    /// 查询字符串（支持 term/phrase/boolean/wildcard，AND 默认）。
+    /// Query string (supports term/phrase/boolean/wildcard, AND by default).
     pub query: String,
-    /// 限定搜索的索引根；None = 搜全部。
+    /// Restrict search to these index roots; None = search all.
     pub index_ids: Option<Vec<IndexId>>,
-    /// 类型过滤（parser 名，如 ["PdfParser"]）；None = 不过滤。
+    /// Type filter (parser names, e.g. ["PdfParser"]); None = no filter.
     pub parsers: Option<Vec<String>>,
-    /// 文件大小下限（字节）；None = 无下限。
+    /// Minimum file size in bytes; None = no lower bound.
     pub min_size: Option<i64>,
-    /// 文件大小上限（字节）；None = 无上限。
+    /// Maximum file size in bytes; None = no upper bound.
     pub max_size: Option<i64>,
-    /// 页码（0-based）。
+    /// Page number (0-based).
     pub page: usize,
-    /// 大小写敏感（true 时对召回结果做精确大小写二次过滤）。
+    /// Case-sensitive (when true, performs an exact-case second-pass filter on recall results).
     #[serde(default)]
     pub case_sensitive: bool,
 }
 
 
-/// 搜索响应。
+/// Search response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResponse {
     pub total_hits: usize,
@@ -35,13 +35,13 @@ pub struct SearchResponse {
     pub page_count: usize,
 }
 
-/// 单条搜索结果。
+/// A single search result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     pub uid: Uid,
     pub path: String,
     pub title: String,
-    /// SnippetGenerator 产出的命中片段（含高亮标记）。
+    /// Hit snippet produced by the SnippetGenerator (includes highlight markers).
     pub snippet: String,
     pub score: f32,
     pub size: i64,
@@ -50,25 +50,25 @@ pub struct SearchResult {
     pub index_id: IndexId,
 }
 
-/// 搜索引擎抽象（具体实现在 search crate）。
+/// Search engine abstraction (concrete implementation in the search crate).
 pub trait Searcher: Send + Sync {
-    /// 执行搜索。
+    /// Execute a search.
     fn search(&self, request: &SearchRequest) -> Result<SearchResponse>;
 
-    /// 获取预览数据（重新解析原文件，返回渲染所需内容）。
+    /// Fetch preview data (re-parses the original file and returns the content needed for rendering).
     fn get_preview(&self, uid: &Uid) -> Result<PreviewData>;
 }
 
-/// 预览数据（点击结果项时获取）。
+/// Preview data (fetched when a result item is clicked).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PreviewData {
     pub uid: Uid,
     pub path: String,
     pub parser: String,
-    /// 重新解析的全文（或渲染指令，如 PDF 页面图片）。
+    /// Re-parsed full text (or rendering instructions, e.g. PDF page images).
     pub content: String,
-    pub exists: bool, // false = 文件已删除/移动（可移动介质场景）
+    pub exists: bool, // false = file has been deleted/moved (removable media scenario)
 }
 
-/// 每页结果数。
+/// Number of results per page.
 pub const PAGE_SIZE: usize = 50;

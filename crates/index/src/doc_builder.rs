@@ -1,9 +1,9 @@
-//! Document 组装 + uid 算法。
+//! Document assembly + uid algorithm.
 //!
-//! 依据 openspec core-index-schema spec：
+//! Per the openspec core-index-schema spec:
 //! - uid = `file://{canonical_path}`
-//! - content 字段追加 title/author/文件名（带/去扩展名两版本），多值 add_text 拼接
-//! - title 缺失退化为去扩展名文件名
+//! - the content field appends title/author/filename (both with and without extension), concatenated via multivalued add_text
+//! - a missing title falls back to the filename without its extension
 //! - upsert = delete_term(uid) + add_document
 
 use crate::schema::SchemaFields;
@@ -11,29 +11,29 @@ use pivotsearch_contracts::{ParseResult, Uid};
 use std::path::Path;
 use tantivy::TantivyDocument;
 
-/// 计算 uid：`file://{canonical_path}`。
+/// Compute the uid: `file://{canonical_path}`.
 ///
-/// 对传入路径做规范化（解析符号链接和相对路径）。
-/// 若 canonicalize 失败（文件已删除），退化为传入的字符串形式。
+/// Canonicalizes the given path (resolving symlinks and relative paths).
+/// If canonicalize fails (the file was already deleted), falls back to the string form of the input path.
 pub fn compute_uid(path: &Path) -> Uid {
     match path.canonicalize() {
         Ok(canon) => format!("file://{}", canon.display()),
-        // 文件可能已被删除（监听 remove 事件场景），用原路径字符串兜底
+        // The file may already have been deleted (handling a remove event); fall back to the original path string
         Err(_) => format!("file://{}", path.display()),
     }
 }
 
-/// 从 uid 反推路径（`file://{path}` → `{path}`）。
+/// Reverse-derive the path from a uid (`file://{path}` → `{path}`).
 pub fn extract_path(uid: &str) -> Option<&str> {
     uid.strip_prefix("file://")
 }
 
-/// 组装一个 Tantivy Document。
+/// Assemble a Tantivy Document.
 ///
-/// content 字段策略（复刻经典桌面搜索工具的设计，净室）：
-/// content 实际索引文本 = {正文} + title + authors... + 文件名(带扩展名) + 文件名(去扩展名)。
-/// 多次 add_text 到同字段，Tantivy 会作为多值 token 流处理，等效拼接。
-/// 追加文件名两版本是因为 jieba 不在点处切分，搜 report.docx 时不带扩展名的 "report" 也要命中。
+/// content field strategy (reproduces the design of classic desktop search tools, clean-room):
+/// the text actually indexed in content = {body} + title + authors... + filename(with extension) + filename(without extension).
+/// Multiple add_text calls into the same field are treated by Tantivy as a multivalued token stream, equivalent to concatenation.
+/// Both filename variants are appended because jieba does not split at the dot; when searching for report.docx, the extension-less "report" should also match.
 pub fn build_document(
     fields: &SchemaFields,
     path: &Path,
@@ -43,10 +43,10 @@ pub fn build_document(
 ) -> TantivyDocument {
     let mut doc = TantivyDocument::new();
 
-    // —— 展示字段（stored）——
+    // —— Display fields (stored) ——
     doc.add_text(fields.uid, uid);
 
-    // title：缺失则退化为去扩展名文件名
+    // title: falls back to the filename without its extension if missing
     let title = parse_result
         .title
         .clone()
@@ -58,7 +58,7 @@ pub fn build_document(
         });
     doc.add_text(fields.title, &title);
 
-    // type = 扩展名（小写无点）
+    // type = extension (lowercase, no dot)
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
@@ -66,15 +66,15 @@ pub fn build_document(
         .unwrap_or_default();
     doc.add_text(fields.r#type, &ext);
 
-    // parser 名
+    // parser name
     doc.add_text(fields.parser, parse_result.parser_name);
 
-    // author 多值
+    // author (multivalued)
     for author in &parse_result.authors {
         doc.add_text(fields.author, author);
     }
 
-    // 数值字段
+    // Numeric fields
     let size = path.metadata().map(|m| m.len() as i64).unwrap_or(0);
     doc.add_i64(fields.size, size);
     let mtime = path
@@ -88,15 +88,15 @@ pub fn build_document(
 
     doc.add_text(fields.index_id, index_id);
 
-    // —— snippet_text：content 前 500 字符，stored，供 SnippetGenerator 高亮 ——
+    // —— snippet_text: first 500 chars of content, stored, for SnippetGenerator highlighting ——
     let snippet_source: String = parse_result.content.chars().take(500).collect();
     doc.add_text(fields.snippet_text, &snippet_source);
 
-    // —— content 字段（多值拼接）——
-    // 1. 正文
+    // —— content field (multivalued concatenation) ——
+    // 1. body
     doc.add_text(fields.content, &parse_result.content);
 
-    // 2. title（再次加入 content，让标题词也能被正文搜到）
+    // 2. title (added to content again so title terms are also searchable via the body)
     doc.add_text(fields.content, &title);
 
     // 3. authors
@@ -109,14 +109,14 @@ pub fn build_document(
         doc.add_text(fields.content, meta);
     }
 
-    // 5. 文件名（带扩展名）
+    // 5. filename (with extension)
     let file_name = path
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or_default();
     doc.add_text(fields.content, file_name);
 
-    // 6. 文件名（去扩展名）—— jieba 不在点处切分，确保不带扩展名也能搜到
+    // 6. filename (without extension) — jieba does not split at the dot; ensures it is searchable without the extension
     if !ext.is_empty() {
         let stem = path
             .file_stem()
@@ -140,7 +140,7 @@ mod tests {
         let path = Path::new("/tmp/test.md");
         let uid = compute_uid(path);
         assert!(uid.starts_with("file://"));
-        // canonicalize 后 /tmp 可能是 /private/tmp（macOS），所以只检查前缀
+        // After canonicalize, /tmp may become /private/tmp (macOS), so only check the prefix
         assert!(uid.contains("test.md"));
     }
 
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn build_document_content_includes_metadata_and_filename() {
         let (schema, fields, _) = build_schema();
-        // 用 schema 构造一个临时 index 来读取字段值
+        // Build a temporary index from the schema to read field values
         let index = tantivy::Index::create_in_ram(schema.clone());
 
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/sample.txt");
@@ -172,14 +172,14 @@ mod tests {
 
         let doc = build_document(&fields, &path, &parse_result, &uid, "idx-1");
 
-        // 验证字段都写入了
+        // Verify the fields were written
         let uid_values: Vec<_> = doc.get_all(fields.uid).collect();
         assert_eq!(uid_values.len(), 1);
 
         let author_values: Vec<_> = doc.get_all(fields.author).collect();
         assert_eq!(author_values.len(), 1);
 
-        // content 多值：正文 + title + author + 文件名(带ext) + 文件名(去ext) = 5
+        // content is multivalued: body + title + author + filename(with ext) + filename(without ext) = 5
         let content_values: Vec<_> = doc.get_all(fields.content).collect();
         assert!(
             content_values.len() >= 5,
@@ -187,7 +187,7 @@ mod tests {
             content_values.len()
         );
 
-        // 清理
+        // Cleanup
         std::fs::remove_file(&path).ok();
         drop(index);
     }
@@ -210,7 +210,7 @@ mod snippet_tests {
         };
         let doc = build_document(&fields, path, &parse_result, "file://test.md", "idx");
 
-        // snippet_text 应在 doc 中且有值
+        // snippet_text should be present in the doc and have a value
         let vals: Vec<_> = doc.get_all(fields.snippet_text).collect();
         assert!(!vals.is_empty(), "snippet_text 应有值");
         let text = vals[0].as_str();

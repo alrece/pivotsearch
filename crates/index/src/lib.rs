@@ -1,6 +1,6 @@
 //! # pivotsearch-index
 //!
-//! 索引层：Tantivy schema + Document 组装 + 增量算法 + tree_index（SQLite）。
+//! Index layer: Tantivy schema + Document assembly + incremental algorithm + tree_index (SQLite).
 
 pub mod schema;
 pub mod tokenizer;

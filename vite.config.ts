@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
-// Tauri 期望前端在 localhost:1420，且构建产物在 dist/
+// Tauri expects the frontend at localhost:1420 with build output in dist/
 export default defineConfig({
   plugins: [vue()],
   clearScreen: false,
@@ -9,7 +9,7 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     watch: {
-      // 不监听 Rust 后端变化（避免重复刷新）
+      // Don't watch the Rust backend (avoids redundant reloads)
       ignored: ["**/src-tauri/**", "**/crates/**"],
     },
   },

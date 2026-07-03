@@ -1,6 +1,6 @@
-//! DOCX 解析器（docx-rs）。
+//! DOCX parser (docx-rs).
 //!
-//! docx-rs 主要面向生成，读取需递归遍历 Document→Paragraph→Run→Text。
+//! docx-rs is primarily aimed at generation; reading requires recursively traversing Document → Paragraph → Run → Text.
 
 use docx_rs::{
     read_docx, InsertChild, ParagraphChild, RunChild, DocumentChild,
@@ -8,7 +8,7 @@ use docx_rs::{
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::path::Path;
 
-/// DOCX 解析器。
+/// DOCX parser.
 pub struct DocxParser;
 
 impl Parser for DocxParser {
@@ -55,7 +55,7 @@ impl Parser for DocxParser {
     }
 }
 
-/// 从 Paragraph 提取所有 Run/Insert/Hyperlink 里的 Text。
+/// Extracts all Text from Run/Insert/Hyperlink within a Paragraph.
 fn extract_paragraph_text(paragraph: &docx_rs::Paragraph) -> String {
     let mut text = String::new();
     for child in &paragraph.children {
@@ -71,7 +71,7 @@ fn extract_paragraph_text(paragraph: &docx_rs::Paragraph) -> String {
                 }
             }
             ParagraphChild::Hyperlink(hyperlink) => {
-                // Hyperlink.children 是 Vec<ParagraphChild>，递归提取
+                // Hyperlink.children is Vec<ParagraphChild>; recurse to extract
                 for sub_child in &hyperlink.children {
                     if let ParagraphChild::Run(run) = sub_child {
                         collect_run_text(&run.children, &mut text);
@@ -84,7 +84,7 @@ fn extract_paragraph_text(paragraph: &docx_rs::Paragraph) -> String {
     text
 }
 
-/// 从 RunChild 列表提取 Text。
+/// Extracts Text from a list of RunChild.
 fn collect_run_text(run_children: &[RunChild], out: &mut String) {
     for rc in run_children {
         if let RunChild::Text(t) = rc {

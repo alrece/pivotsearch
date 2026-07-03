@@ -1,14 +1,14 @@
-//! PPTX 解析器（OOXML）。
+//! PPTX parser (OOXML).
 //!
-//! PPTX 本质是 zip 包，内含 ppt/slides/slideN.xml（每个幻灯片一个 XML）。
-//! XML 里的 <a:t> 标签是文本内容。用 zip crate 解开提取所有 slide 的文本。
+//! A PPTX is essentially a zip package containing ppt/slides/slideN.xml (one XML per slide).
+//! The <a:t> tags in the XML hold the text content. We unpack it with the zip crate and extract the text from all slides.
 
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
-/// PPTX 解析器。
+/// PPTX parser.
 pub struct PptxParser;
 
 impl Parser for PptxParser {
@@ -30,7 +30,7 @@ impl Parser for PptxParser {
             reason: format!("pptx zip: {e}"),
         })?;
 
-        // 收集所有 slide 文件名并排序（slide1, slide2, ...）
+        // Collect all slide file names and sort them (slide1, slide2, ...)
         let mut slide_names: Vec<String> = Vec::new();
         for i in 0..archive.len() {
             if let Ok(entry) = archive.by_index(i) {
@@ -41,7 +41,7 @@ impl Parser for PptxParser {
             }
         }
         slide_names.sort_by(|a, b| {
-            // 按数字排序（slide1 < slide2 < slide10）
+            // Sort numerically (slide1 < slide2 < slide10)
             let na = a.trim_start_matches("ppt/slides/slide").trim_end_matches(".xml");
             let nb = b.trim_start_matches("ppt/slides/slide").trim_end_matches(".xml");
             na.parse::<u32>().unwrap_or(0).cmp(&nb.parse::<u32>().unwrap_or(0))
@@ -63,7 +63,7 @@ impl Parser for PptxParser {
             }
         }
 
-        // 从 core.xml 提取标题（可选）
+        // Extract the title from core.xml (optional)
         let title = if let Ok(mut entry) = archive.by_name("docProps/core.xml") {
             let mut xml = String::new();
             if entry.read_to_string(&mut xml).is_ok() {
@@ -87,7 +87,7 @@ impl Parser for PptxParser {
     }
 }
 
-/// 从 PPTX slide XML 提取所有 <a:t>...</a:t> 文本（OOXML 文本运行）。
+/// Extracts all <a:t>...</a:t> text (OOXML text runs) from PPTX slide XML.
 fn extract_text_runs(xml: &str) -> Vec<String> {
     let mut texts = Vec::new();
     let tag = "<a:t>";
@@ -113,7 +113,7 @@ fn extract_text_runs(xml: &str) -> Vec<String> {
     texts
 }
 
-/// 从 core.xml 提取 Dublin Core 字段（dc:title 等）。
+/// Extracts a Dublin Core field (dc:title, etc.) from core.xml.
 fn extract_dc_field(xml: &str, field: &str) -> Option<String> {
     let open = format!("<{field}>");
     let close = format!("</{field}>");
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn pptx_extensions() {
         assert_eq!(PptxParser.extensions(), &["pptx"]);
-        // 不支持老格式
+        // Legacy format not supported
         assert!(!PptxParser.extensions().contains(&"ppt"));
     }
 

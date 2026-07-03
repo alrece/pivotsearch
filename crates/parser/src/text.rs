@@ -1,12 +1,12 @@
-//! 纯文本 / 源代码解析器。
+//! Plain text / source code parser.
 //!
-//! 用 chardetng 检测编码（GBK/Big5/UTF-8 等），encoding_rs 转码为 UTF-8。
+//! Uses chardetng to detect encoding (GBK/Big5/UTF-8, etc.) and encoding_rs to transcode to UTF-8.
 
 use chardetng::{Iso2022JpDetection, Utf8Detection};
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::path::Path;
 
-/// 纯文本解析器。也处理源代码文件（按扩展名识别，内容当文本）。
+/// Plain text parser. Also handles source code files (identified by extension; content treated as text).
 #[derive(Default, Clone)]
 pub struct TextParser;
 
@@ -30,7 +30,7 @@ impl Parser for TextParser {
             source: e,
         })?;
 
-        // 编码检测 + 转码
+        // Encoding detection + transcoding
         let mut detector = chardetng::EncodingDetector::new(Iso2022JpDetection::Allow);
         detector.feed(&bytes, true);
         let encoding = detector.guess(None, Utf8Detection::Allow);
@@ -61,7 +61,7 @@ mod tests {
     fn parse_gbk_text() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gbk.txt");
-        // "中文" 的 GBK 编码
+        // GBK-encoded bytes for the two CJK characters asserted below
         std::fs::write(&path, [0xD6, 0xD0, 0xCE, 0xC4]).unwrap();
         let result = TextParser.parse(&path).unwrap();
         assert_eq!(result.content, "中文");

@@ -1,7 +1,7 @@
 //! # pivotsearch-search
 //!
-//! 查询层：单索引查询 + 高亮 + 分页（Phase 1）。
-//! 多索引合并见 multi.rs（Phase 3）。
+//! Query layer: single-index query + highlighting + pagination (Phase 1).
+//! Multi-index merging is in multi.rs (Phase 3).
 
 pub mod multi;
 
@@ -15,7 +15,7 @@ use tantivy::query::QueryParser;
 use tantivy::schema::Value;
 use tantivy::Index;
 
-/// 搜索引擎字段句柄。
+/// Search engine field handles.
 #[derive(Clone)]
 pub struct SearchSchemaFields {
     pub uid: tantivy::schema::Field,
@@ -30,7 +30,7 @@ pub struct SearchSchemaFields {
     pub index_id: tantivy::schema::Field,
 }
 
-/// 单索引搜索引擎。
+/// Single-index search engine.
 pub struct SimpleSearcher {
     index: Index,
     reader: tantivy::IndexReader,
@@ -50,7 +50,7 @@ impl SimpleSearcher {
             .try_into()
             .map_err(|e| PivotsearchError::IndexIo(format!("reader build: {e}")))?;
 
-        // QueryParser 查询 content 字段；tokenizer 由 schema field 的 indexing options 决定（已配 jieba）
+        // QueryParser queries the content field; the tokenizer is determined by the schema field's indexing options (jieba is configured)
         let query_parser = QueryParser::for_index(&index, vec![fields.content]);
 
         Ok(Self {
@@ -61,7 +61,7 @@ impl SimpleSearcher {
         })
     }
 
-    /// 执行搜索（单索引），返回带高亮结果。
+    /// Execute a search (single index), returning highlighted results.
     pub fn search(&self, request: &SearchRequest) -> Result<SearchResponse> {
         let searcher = self.reader.searcher();
         let query = self
@@ -103,15 +103,15 @@ impl SimpleSearcher {
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0);
 
-            // snippet 从 snippet_text 字段（content 前 500 字节 stored）生成
+            // The snippet is generated from the snippet_text field (first 500 bytes of content, stored)
             let snippet_source = doc_get_text(&doc, self.fields.snippet_text).unwrap_or_default();
 
-            // 大小写敏感：检查原文是否含精确大小写的查询词（任一词匹配即保留）
+            // Case-sensitive: check whether the original text contains the query terms with exact casing (keep if any term matches)
             if request.case_sensitive && !snippet_source.is_empty() {
                 let query_terms: Vec<&str> = request.query.split_whitespace().collect();
                 let exact_match = query_terms.iter().any(|t| snippet_source.contains(t));
                 if !exact_match {
-                    continue; // 小写召回但原文大小写不匹配，过滤掉
+                    continue; // Recalled via lowercasing but the original text's casing does not match; filter it out
                 }
             }
 
@@ -144,12 +144,12 @@ impl SimpleSearcher {
         })
     }
 
-    /// reader 引用（供 cli 写入后 reload）。
+    /// Reader reference (for cli to reload after writing).
     pub fn reader(&self) -> &tantivy::IndexReader {
         &self.reader
     }
 
-    /// index 引用。
+    /// Index reference.
     pub fn index(&self) -> &Index {
         &self.index
     }
@@ -163,10 +163,10 @@ fn doc_get_text(
         .and_then(|v| v.as_str().map(|s| s.to_string()))
 }
 
-/// 手动高亮：在 text 里找 query 的每个词，用 <b> 包裹。
+/// Manual highlighting: finds each word of the query in the text and wraps it with <b>.
 ///
-/// 简单可靠，不依赖 Tantivy SnippetGenerator（后者对跨字段场景支持有限）。
-/// query 被空格/标点拆分为多个词，每个词在 text 中做大小写不敏感匹配。
+/// Simple and reliable; does not rely on Tantivy's SnippetGenerator (which has limited support for cross-field scenarios).
+/// The query is split into multiple words by whitespace/punctuation, and each word is matched against the text case-insensitively.
 fn highlight_query(text: &str, query: &str, case_sensitive: bool) -> String {
     let snippet: String = text.chars().take(200).collect();
     let mut result = snippet.clone();
@@ -186,7 +186,7 @@ fn highlight_query(text: &str, query: &str, case_sensitive: bool) -> String {
         if term.is_empty() || (term.len() < 2 && !term.chars().next().map(|c| !c.is_ascii()).unwrap_or(true)) {
             continue;
         }
-        // 大小写敏感用原文匹配，不敏感用小写匹配
+        // Case-sensitive matches against the original text; insensitive matches against the lowercased text
         let (search_in, search_for) = if case_sensitive {
             (result.clone(), term.clone())
         } else {

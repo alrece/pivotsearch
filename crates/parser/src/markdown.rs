@@ -1,10 +1,10 @@
-//! Markdown 解析器（pulldown-cmark 0.13）。
+//! Markdown parser (pulldown-cmark 0.13).
 
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use pulldown_cmark::{Event, Options, Parser as CmarkParser, Tag, TagEnd};
 use std::path::Path;
 
-/// Markdown 解析器。提取纯文本（去掉标记符号）。
+/// Markdown parser. Extracts plain text (stripping markup symbols).
 pub struct MarkdownParser;
 
 impl Parser for MarkdownParser {

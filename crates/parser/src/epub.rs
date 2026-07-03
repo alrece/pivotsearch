@@ -1,14 +1,14 @@
-//! ePub 解析器。
+//! ePub parser.
 //!
-//! ePub 本质是 zip 包，内含 XHTML 页面。用 zip crate 解开，
-//! 提取所有 .xhtml/.html 文件的正文文本（去标签）。
+//! An ePub is essentially a zip package containing XHTML pages. We unpack it with the zip crate
+//! and extract the body text (tags stripped) from all .xhtml/.html files.
 
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
-/// ePub 解析器。
+/// ePub parser.
 pub struct EpubParser;
 
 impl Parser for EpubParser {
@@ -41,7 +41,7 @@ impl Parser for EpubParser {
             };
             let name = entry.name().to_string();
 
-            // 提取 XHTML/HTML 正文
+            // Extract XHTML/HTML body text
             if name.ends_with(".xhtml") || name.ends_with(".html") || name.ends_with(".htm") {
                 let mut html = String::new();
                 if entry.read_to_string(&mut html).is_ok() {
@@ -52,7 +52,7 @@ impl Parser for EpubParser {
                         }
                         content.push_str(&text);
                     }
-                    // 从第一个 HTML 的 <title> 提取标题
+                    // Extract the title from the first HTML's <title>
                     if title.is_none() {
                         title = extract_title(&html);
                     }
@@ -72,15 +72,15 @@ impl Parser for EpubParser {
     }
 }
 
-/// 简易 HTML 标签去除（提取纯文本）。
+/// Minimal HTML tag stripper (extracts plain text).
 ///
-/// 先移除 script/style 块（含内容），再去掉所有标签。
+/// First removes script/style blocks (including their content), then strips all tags.
 fn strip_html_tags(html: &str) -> String {
-    // 第一步：移除 script/style 块（含内容）
+    // Step 1: remove script/style blocks (including content)
     let cleaned = remove_blocks(html, "<script", "</script>");
     let cleaned = remove_blocks(&cleaned, "<style", "</style>");
 
-    // 第二步：去掉所有 <...> 标签
+    // Step 2: strip all <...> tags
     let mut text = String::with_capacity(cleaned.len() / 2);
     let mut in_tag = false;
     for ch in cleaned.chars() {
@@ -94,7 +94,7 @@ fn strip_html_tags(html: &str) -> String {
     html_decode(&text)
 }
 
-/// 移除所有 open...close 块（大小写不敏感匹配开标签）。
+/// Removes all open...close blocks (case-insensitive matching of the opening tag).
 fn remove_blocks(input: &str, open: &str, close: &str) -> String {
     let lower = input.to_lowercase();
     let mut result = String::with_capacity(input.len());
@@ -110,7 +110,7 @@ fn remove_blocks(input: &str, open: &str, close: &str) -> String {
             offset = abs_end;
             search = &lower[abs_end..];
         } else {
-            // 无闭合标签，保留剩余
+            // No closing tag; keep the remainder
             cursor = input.len();
             break;
         }
@@ -119,7 +119,7 @@ fn remove_blocks(input: &str, open: &str, close: &str) -> String {
     result
 }
 
-/// 提取 <title> 内容。
+/// Extracts the contents of <title>.
 fn extract_title(html: &str) -> Option<String> {
     let lower = html.to_lowercase();
     let start = lower.find("<title>")? + 7;
@@ -133,7 +133,7 @@ fn extract_title(html: &str) -> Option<String> {
     None
 }
 
-/// 简易 HTML 实体解码。
+/// Minimal HTML entity decoder.
 fn html_decode(s: &str) -> String {
     s.replace("&nbsp;", " ")
         .replace("&amp;", "&")

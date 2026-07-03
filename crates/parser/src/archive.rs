@@ -1,25 +1,26 @@
-//! 归档穿透：zip/tar 解包到临时目录后递归解析内部文件。
+//! Archive traversal: unzip/untar to a temp directory, then recursively parse inner files.
 //!
-//! 这不是标准 Parser（归档返回多文件），而是工具函数。
-//! 由增量索引遍历器调用：遇到归档文件时解包，对内部每个文件递归调用 registry.parse。
+//! This is not a standard Parser (archives return multiple files); it is a utility function.
+//! Called by the incremental index traverser: when it encounters an archive, it unpacks it
+//! and recursively calls registry.parse on each inner file.
 //!
-//! 设计（复刻经典桌面搜索工具的归档穿透，净室）：
-//! - zip/tar 解包到临时目录
-//! - 对每个内部文件调用 parser_registry.parse
-//! - 合并所有内部文件文本为一个 ParseResult
-//! - 用完清理临时目录
+//! Design (clean-room reimplementation of archive traversal from classic desktop search tools):
+//! - Unzip/untar to a temp directory
+//! - Call parser_registry.parse on each inner file
+//! - Merge all inner files' text into a single ParseResult
+//! - Clean up the temp directory when done
 
 use pivotsearch_contracts::{ParseResult, ParserRegistry, PivotsearchError, Result};
 use std::path::Path;
 
-/// 判断文件是否为支持的归档类型。
+/// Determines whether a file is a supported archive type.
 pub fn is_archive(path: &Path) -> bool {
     let name = path
         .file_name()
         .and_then(|n| n.to_str())
         .map(|n| n.to_lowercase())
         .unwrap_or_default();
-    // 处理双扩展名（tar.gz / tar.bz2）和单扩展名
+    // Handle double extensions (tar.gz / tar.bz2) and single extensions
     name.ends_with(".zip")
         || name.ends_with(".tar")
         || name.ends_with(".tar.gz")
@@ -28,10 +29,10 @@ pub fn is_archive(path: &Path) -> bool {
         || name.ends_with(".tbz2")
 }
 
-/// 解包归档并解析内部所有文件，合并文本。
+/// Unpacks the archive and parses all inner files, merging their text.
 ///
-/// 单个归档的 ParseResult.content = 所有内部文件文本拼接。
-/// parser_name 标记为归档内各文件的 parser（主要 parser 名）。
+/// The ParseResult.content of a single archive = the concatenation of all inner files' text.
+/// parser_name is marked with each inner file's parser (the primary parser name).
 pub fn parse_archive(path: &Path, registry: &dyn ParserRegistry) -> Result<ParseResult> {
     let temp_dir = tempfile::tempdir().map_err(|e| PivotsearchError::FsIo {
         path: path.display().to_string(),
@@ -60,7 +61,7 @@ pub fn parse_archive(path: &Path, registry: &dyn ParserRegistry) -> Result<Parse
                     }
                 }
             }
-            Err(_) => continue, // 归档内不支持的文件跳过
+            Err(_) => continue, // Skip unsupported files inside the archive
         }
     }
 
@@ -71,7 +72,7 @@ pub fn parse_archive(path: &Path, registry: &dyn ParserRegistry) -> Result<Parse
     })
 }
 
-/// 解包归档到目标目录。
+/// Unpacks the archive into the destination directory.
 fn extract_archive(path: &Path, dest: &Path) -> Result<()> {
     let ext = path
         .extension()
@@ -86,12 +87,12 @@ fn extract_archive(path: &Path, dest: &Path) -> Result<()> {
             // .tar.gz
             extract_tar(path, dest, true)
         }
-        "bz2" => extract_tar(path, dest, false), // 简化：bz2 也尝试 tar
+        "bz2" => extract_tar(path, dest, false), // Simplification: also try tar for bz2
         _ => Err(PivotsearchError::UnsupportedFormat(ext)),
     }
 }
 
-/// 解压 zip。
+/// Unzips a zip archive.
 fn extract_zip(path: &Path, dest: &Path) -> Result<()> {
     let file = std::fs::File::open(path).map_err(|e| PivotsearchError::FsIo {
         path: path.display().to_string(),
@@ -109,7 +110,7 @@ fn extract_zip(path: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
-/// 解包 tar（可选 gzip）。
+/// Unpacks a tar archive (optionally gzip-compressed).
 fn extract_tar(path: &Path, dest: &Path, gzip: bool) -> Result<()> {
     let file = std::fs::File::open(path).map_err(|e| PivotsearchError::FsIo {
         path: path.display().to_string(),
@@ -151,7 +152,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let zip_path = dir.path().join("test.zip");
 
-        // 创建含两个 txt 的 zip
+        // Create a zip containing two txt files
         let zip_file = std::fs::File::create(&zip_path).unwrap();
         let mut writer = zip::ZipWriter::new(zip_file);
         let opts = SimpleFileOptions::default();
@@ -161,7 +162,7 @@ mod tests {
         writer.write_all(b"beta content").unwrap();
         writer.finish().unwrap();
 
-        // 解包
+        // Unpack
         let dest = tempfile::tempdir().unwrap();
         extract_zip(&zip_path, dest.path()).unwrap();
         assert!(dest.path().join("a.txt").exists());

@@ -1,19 +1,21 @@
-//! tree_index：SQLite 持久化已索引文件树状态。
+//! tree_index: SQLite-persisted state of the indexed file tree.
 //!
-//! 替代经典桌面搜索工具的 Java 序列化方案——SQLite 跨版本稳定、可查询、可恢复。
-//! 这是增量算法的状态基础：记录每个已索引文件的 path/mtime/parser，
-//! 增量时比对磁盘 mtime 决定新增/修改/删除。
+//! Replaces the classic desktop search tool's Java serialization scheme — SQLite is
+//! stable across versions, queryable, and recoverable.
+//! This is the state foundation for the incremental algorithm: it records each indexed
+//! file's path/mtime/parser, and at incremental time compares them against the on-disk
+//! mtime to decide add/modify/delete.
 
 use pivotsearch_contracts::{IndexId, PivotsearchError, Result, Uid};
 use rusqlite::{params, Connection};
 use std::path::Path;
 
-/// SQLite 持久化的文件树状态。
+/// File-tree state persisted in SQLite.
 pub struct TreeIndex {
     conn: Connection,
 }
 
-/// 一条已索引文件记录。
+/// A single indexed-file record.
 #[derive(Debug, Clone)]
 pub struct IndexedFile {
     pub uid: Uid,
@@ -23,7 +25,7 @@ pub struct IndexedFile {
     pub index_id: IndexId,
 }
 
-/// 一个索引根的元信息。
+/// Metadata for a single index root.
 #[derive(Debug, Clone)]
 pub struct IndexRoot {
     pub id: IndexId,
@@ -33,14 +35,14 @@ pub struct IndexRoot {
 }
 
 impl TreeIndex {
-    /// 打开（或创建）SQLite 数据库。
+    /// Open (or create) the SQLite database.
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open(path).map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
         Self::init_schema(&conn)?;
         Ok(Self { conn })
     }
 
-    /// 内存数据库（测试用）。
+    /// In-memory database (for testing).
     #[cfg(test)]
     pub fn open_memory() -> Result<Self> {
         let conn = Connection::open_in_memory().map_err(|e| PivotsearchError::Sqlite(e.to_string()))?;
@@ -71,9 +73,9 @@ impl TreeIndex {
         Ok(())
     }
 
-    // ── index_roots 管理 ──
+    // ── index_roots management ──
 
-    /// 添加一个索引根。
+    /// Add an index root.
     pub fn add_index_root(
         &self,
         id: &str,
@@ -90,7 +92,7 @@ impl TreeIndex {
         Ok(())
     }
 
-    /// 列出所有索引根。
+    /// List all index roots.
     pub fn list_index_roots(&self) -> Result<Vec<IndexRoot>> {
         let mut stmt = self
             .conn
@@ -110,7 +112,7 @@ impl TreeIndex {
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
 
-    /// 移除索引根（同时级联删除其下所有文件记录）。
+    /// Remove an index root (also cascades deletion of all file records beneath it).
     pub fn remove_index_root(&self, id: &str) -> Result<()> {
         self.conn
             .execute("DELETE FROM indexed_files WHERE index_id = ?1", params![id])
@@ -121,9 +123,9 @@ impl TreeIndex {
         Ok(())
     }
 
-    // ── indexed_files 管理 ──
+    // ── indexed_files management ──
 
-    /// 取某索引根下所有已索引文件（供增量算法 unseenDocs 用）。
+    /// Get all indexed files under an index root (used by the incremental algorithm's unseenDocs).
     pub fn files_for_index(&self, index_id: &str) -> Result<Vec<IndexedFile>> {
         let mut stmt = self
             .conn
@@ -144,7 +146,7 @@ impl TreeIndex {
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
 
-    /// upsert 一条文件记录（新增或更新 mtime/parser）。
+    /// Upsert a file record (insert or update mtime/parser).
     pub fn upsert_file(&self, file: &IndexedFile) -> Result<()> {
         self.conn
             .execute(
@@ -156,7 +158,7 @@ impl TreeIndex {
         Ok(())
     }
 
-    /// 按 uid 删除一条文件记录。
+    /// Delete a single file record by uid.
     pub fn delete_file(&self, uid: &str) -> Result<()> {
         self.conn
             .execute("DELETE FROM indexed_files WHERE uid = ?1", params![uid])
@@ -164,7 +166,7 @@ impl TreeIndex {
         Ok(())
     }
 
-    /// 按 uid 查询单条（mtime 二次校验用）。
+    /// Look up a single record by uid (for mtime double-check).
     pub fn get_file(&self, uid: &str) -> Result<Option<IndexedFile>> {
         let mut stmt = self
             .conn
@@ -186,7 +188,7 @@ impl TreeIndex {
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
 
-    /// 统计某索引根的文件数（状态展示用）。
+    /// Count the files under an index root (for status display).
     pub fn count_files(&self, index_id: &str) -> Result<u64> {
         self.conn
             .query_row(
@@ -198,8 +200,8 @@ impl TreeIndex {
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
 
-    /// 按 parser 类型分组统计文件数（索引详情用）。
-    /// 返回 Vec<(parser_name_or_"未知", count)>，按 count 降序。
+    /// Count files grouped by parser type (for index details).
+    /// Returns Vec<(parser_name_or_"unknown", count)>, sorted by count descending.
     pub fn stats_by_parser(&self, index_id: &str) -> Result<Vec<(String, u64)>> {
         let mut stmt = self
             .conn
@@ -219,7 +221,7 @@ impl TreeIndex {
             .map_err(|e| PivotsearchError::Sqlite(e.to_string()))
     }
 
-    /// 取最近修改的文件（按 mtime 降序，限 N 条）。
+    /// Get the most recently modified files (by mtime descending, limited to N rows).
     pub fn recent_files(&self, index_id: &str, limit: u64) -> Result<Vec<IndexedFile>> {
         let mut stmt = self
             .conn
@@ -250,7 +252,7 @@ mod tests {
     #[test]
     fn open_and_init_schema() {
         let ti = TreeIndex::open_memory().unwrap();
-        // 表存在
+        // Tables exist
         let count: i64 = ti
             .conn
             .query_row("SELECT COUNT(*) FROM index_roots", [], |r| r.get(0))
@@ -288,7 +290,7 @@ mod tests {
         assert_eq!(got.mtime, 5000);
         assert_eq!(got.parser.as_deref(), Some("TextParser"));
 
-        // upsert 更新 mtime
+        // upsert updates mtime
         let mut file2 = file.clone();
         file2.mtime = 6000;
         ti.upsert_file(&file2).unwrap();
@@ -309,11 +311,11 @@ mod tests {
         }).unwrap();
         assert_eq!(ti.count_files("idx-1").unwrap(), 1);
 
-        // 删除单文件
+        // Delete a single file
         ti.delete_file("file:///docs/a.txt").unwrap();
         assert_eq!(ti.count_files("idx-1").unwrap(), 0);
 
-        // 再加一个，然后级联删索引根
+        // Add another, then cascade-delete the index root
         ti.upsert_file(&IndexedFile {
             uid: "file:///docs/b.txt".to_string(),
             path: "/docs/b.txt".to_string(),

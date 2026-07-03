@@ -1,16 +1,17 @@
-//! PDF 解析器（pdfium-render，动态链接 PDFium）。
+//! PDF parser (pdfium-render, dynamically linked to PDFium).
 //!
-//! PDFium 是 Chromium 同款 PDF 引擎，对中文（CID 字体）支持成熟。
-//! 运行时需要系统提供 PDFium 动态库。Phase 5 改为静态链接。
+//! PDFium is the same PDF engine used by Chromium, with mature support for Chinese (CID fonts).
+//! At runtime the system must provide the PDFium shared library. Phase 5 switches to static linking.
 
 use pdfium_render::prelude::*;
 use pivotsearch_contracts::{ParseResult, Parser, PivotsearchError, Result};
 use std::path::Path;
 
-/// PDF 解析器。
+/// PDF parser.
 ///
-/// 持有可选的 Pdfium 实例（线程安全）。
-/// 构造时尝试绑定系统 PDFium 库；缺失时 pdfium=None，parse 时报清晰错误。
+/// Holds an optional Pdfium instance (thread-safe).
+/// On construction it tries to bind the system PDFium library; if missing, pdfium=None
+/// and parse() returns a clear error.
 pub struct PdfParser {
     pdfium: Option<Pdfium>,
 }
@@ -25,7 +26,7 @@ impl Default for PdfParser {
 }
 
 impl PdfParser {
-    /// 带显式 Pdfium 实例构造（测试/静态链接用）。
+    /// Constructs with an explicit Pdfium instance (for tests / static linking).
     pub fn with_pdfium(pdfium: Pdfium) -> Self {
         Self { pdfium: Some(pdfium) }
     }

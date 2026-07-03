@@ -1,6 +1,6 @@
 //! # pivotsearch CLI
 //!
-//! 开发期调试命令行。Phase 1 实现 index/search 最小闭环。
+//! Development-time debugging CLI. Phase 1 implements the minimal index/search loop.
 
 use std::path::PathBuf;
 
@@ -62,7 +62,7 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
     println!("索引目录: {dir}");
     println!("索引存储: {}", index_path.display());
 
-    // 构造 schema + index
+    // Build schema + index
     let (schema, fields, tokenizer_manager) = build_schema();
     std::fs::create_dir_all(index_path)?;
     let index = Index::create_in_dir(index_path, schema.clone())?;
@@ -73,7 +73,7 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
         ),
     );
 
-    // 字段句柄转换（index crate 的 SchemaFields → search 的 SearchSchemaFields）
+    // Convert field handles (the index crate's SchemaFields → search's SearchSchemaFields)
     let search_fields = SearchSchemaFields {
         uid: fields.uid,
         content: fields.content,
@@ -89,11 +89,11 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
 
     let mut writer = index.writer(50_000_000)?; // 50MB
 
-    // 构造 parser 注册表（含 PDF，若 PDFium 可用）
-    // 启用 PDF parser（需 PDFium 库，缺库时 PdfParser.parse 返回错误不阻塞）
+    // Build the parser registry (includes PDF if PDFium is available)
+    // Enable the PDF parser (requires the PDFium library; if the library is missing, PdfParser.parse returns an error without blocking)
     let registry = ParserRegistryImpl::with_builtin_parsers().with_pdf();
 
-    // 遍历目录
+    // Walk the directory
     let mut total = 0usize;
     let mut skipped = 0usize;
     let mut errors = 0usize;
@@ -105,17 +105,17 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
         let path = entry.path();
         let file_name = entry.file_name().to_string_lossy().to_string();
 
-        // 跳过 lock 文件和隐藏文件（避免索引 Tantivy 自身的索引文件）
+        // Skip lock files and hidden files (avoid indexing Tantivy's own index files)
         if file_name.ends_with(".lock") || file_name.starts_with('.') {
             continue;
         }
 
-        // 用注册表解析
+        // Parse using the registry
         match registry.parse(path) {
             Ok(parse_result) => {
                 let uid = compute_uid(path);
                 let doc = build_document(&fields, path, &parse_result, &uid, "default");
-                // upsert：先删后加（Tantivy 无原生 upsert）
+                // upsert: delete-then-add (Tantivy has no native upsert)
                 writer.delete_term(tantivy::Term::from_field_text(fields.uid, &uid));
                 writer.add_document(doc)?;
                 total += 1;
@@ -142,7 +142,7 @@ fn cmd_index(dir: &str, index_path: &PathBuf) -> anyhow::Result<()> {
 
     println!("完成：索引 {total} 个文件，跳过 {skipped}，失败 {errors}");
 
-    // 构造 searcher 验证可查询
+    // Build a searcher to verify the index is queryable
     let _searcher = SimpleSearcher::new(index, search_fields, tokenizer_manager);
     println!("索引就绪，可用 `pivotsearch search <query>` 查询。");
 
@@ -200,7 +200,7 @@ fn cmd_search(query: &str, index_path: &PathBuf) -> anyhow::Result<()> {
 }
 
 fn strip_html(s: &str) -> String {
-    // 简单去 <b></b> 高亮标签用于 CLI 显示
+    // Simple replacement of <b></b> highlight tags for CLI display
     s.replace("<b>", "\x1b[33m").replace("</b>", "\x1b[0m")
 }
 

@@ -1,12 +1,12 @@
-//! 增量索引算法：mtime 比对 + unseenDocs 文件树 diff + 归档整体跳过。
+//! Incremental indexing algorithm: mtime comparison + unseenDocs file-tree diff + archive skip-all.
 //!
-//! 设计（复刻经典桌面搜索工具的 visitDirOrZip 模式，净室重写）：
-//! 1. 从 tree_index 加载已索引文件集合（path → IndexedFile）
-//! 2. 克隆为 unseen（待"扫视"），遍历磁盘每见到一个就 remove
-//! 3. 遍历完后 unseen 剩余的 = 磁盘已删除的
-//! 4. 新增/修改（mtime 不同）→ 解析 + upsert；未变 → 跳过；删除 → delete_term
+//! Design (reproduces the visitDirOrZip pattern of classic desktop search tools, clean-room rewrite):
+//! 1. Load the set of indexed files from tree_index (path → IndexedFile)
+//! 2. Clone it into unseen (pending "scan"); remove each one as it is encountered while walking the disk
+//! 3. After the walk, the remaining unseen entries = files deleted from disk
+//! 4. New/modified (mtime differs) → parse + upsert; unchanged → skip; deleted → delete_term
 //!
-//! 增量判定以 mtime 为主键（不用 hash，性能优）：
+//! The incremental decision uses mtime as the primary key (no hash, for performance):
 //! `is_modified = old_mtime != new_mtime`
 
 use crate::doc_builder::{build_document, compute_uid};
@@ -17,11 +17,11 @@ use std::collections::HashMap;
 use std::path::Path;
 use tantivy::{IndexWriter, Term};
 
-/// 增量索引器的配置。
+/// Configuration for the incremental indexer.
 pub struct IncrementalConfig {
-    /// 要跳过的文件名模式（如 lock 文件、隐藏文件）。
+    /// Filename patterns to skip (e.g. lock files, hidden files).
     pub skip_patterns: Vec<String>,
-    /// index_id（所属索引根标识）。
+    /// index_id (identifier of the owning index root).
     pub index_id: String,
 }
 
@@ -34,7 +34,7 @@ impl Default for IncrementalConfig {
     }
 }
 
-/// 单个文件的处理结果（内部统计用）。
+/// Processing result for a single file (for internal statistics).
 #[derive(Debug, Default, Clone)]
 pub struct IncrementalStats {
     pub added: usize,
@@ -51,12 +51,12 @@ impl IncrementalStats {
     }
 }
 
-/// 执行一次增量更新。
+/// Perform a single incremental update.
 ///
-/// - action=Update：增量（mtime 比对，只处理变化文件）
-/// - action=Rebuild：全量重建（先清空再索引）
+/// - action=Update: incremental (mtime comparison, only processes changed files)
+/// - action=Rebuild: full rebuild (clears first, then indexes)
 ///
-/// 返回 UpdateResult::SuccessChanged / SuccessUnchanged / Failure。
+/// Returns UpdateResult::SuccessChanged / SuccessUnchanged / Failure.
 pub fn update_incremental(
     root: &Path,
     action: IndexAction,
@@ -69,7 +69,7 @@ pub fn update_incremental(
     update_incremental_with_progress(root, action, config, fields, writer, tree_index, parser_registry, None)
 }
 
-/// 带进度回调的增量更新。progress 回调每 100 个文件调用一次。
+/// Incremental update with a progress callback. The progress callback is invoked once every 100 files.
 pub fn update_incremental_with_progress(
     root: &Path,
     action: IndexAction,
@@ -82,7 +82,7 @@ pub fn update_incremental_with_progress(
 ) -> Result<UpdateResult> {
     let mut stats = IncrementalStats::default();
 
-    // 预统计文件总数（快速 stat，不解析内容）
+    // Pre-count total files (fast stat, no content parsing)
     let total = if let Some(ref mut _cb) = progress {
         walkdir::WalkDir::new(root)
             .into_iter()
@@ -97,26 +97,26 @@ pub fn update_incremental_with_progress(
         cb(0, total);
     }
 
-    // 全量重建：先清空 tree_index 中该 index_id 的所有文件 + Tantivy 该 index_id 的文档
+    // Full rebuild: first clear all files for this index_id in tree_index + the Tantivy documents for this index_id
     if action == IndexAction::Rebuild {
         let existing = tree_index.files_for_index(&config.index_id)?;
         for file in &existing {
             let _ = delete_doc(writer, fields, &file.uid);
         }
-        // tree_index 记录由后续逻辑重建（先全删再重新遍历）
+        // tree_index records are rebuilt by the subsequent logic (delete all first, then re-walk)
         for file in &existing {
             tree_index.delete_file(&file.uid)?;
         }
     }
 
-    // 加载已索引文件（增量用 unseen diff；全量重建后为空）
+    // Load indexed files (used for the incremental unseen diff; empty after a full rebuild)
     let mut unseen: HashMap<String, IndexedFile> = tree_index
         .files_for_index(&config.index_id)?
         .into_iter()
         .map(|f| (f.path.clone(), f))
         .collect();
 
-    // 遍历磁盘目录
+    // Walk the disk directory
     let mut processed = 0usize;
     for entry in walkdir::WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
@@ -133,16 +133,16 @@ pub fn update_incremental_with_progress(
             }
         }
 
-        // 跳过 lock / 隐藏文件
+        // Skip lock / hidden files
         if file_name.ends_with(".lock") || file_name.starts_with('.') {
             stats.skipped_pattern += 1;
             continue;
         }
 
-        // 从 unseen 移除（见到了）
+        // Remove from unseen (file encountered)
         let existing = unseen.remove(&path_str);
 
-        // 计算 mtime
+        // Compute mtime
         let mtime = match file_mtime(path) {
             Ok(m) => m,
             Err(_) => {
@@ -153,7 +153,7 @@ pub fn update_incremental_with_progress(
 
         match existing {
             None => {
-                // 新增文件
+                // New file
                 match index_one(path, fields, writer, parser_registry, &config.index_id, mtime, tree_index) {
                     Ok(true) => stats.added += 1,
                     Ok(false) => stats.errors += 1,
@@ -161,7 +161,7 @@ pub fn update_incremental_with_progress(
                 }
             }
             Some(old) if old.mtime != mtime => {
-                // 修改文件：delete + add（upsert）
+                // Modified file: delete + add (upsert)
                 match index_one(path, fields, writer, parser_registry, &config.index_id, mtime, tree_index) {
                     Ok(true) => stats.modified += 1,
                     Ok(false) => stats.errors += 1,
@@ -169,13 +169,13 @@ pub fn update_incremental_with_progress(
                 }
             }
             Some(_) => {
-                // 未变，跳过
+                // Unchanged, skip
                 stats.skipped_unchanged += 1;
             }
         }
     }
 
-    // unseen 剩余 = 磁盘上已删除的
+    // Remaining unseen = files deleted from disk
     for file in unseen.values() {
         delete_doc(writer, fields, &file.uid)?;
         tree_index.delete_file(&file.uid)?;
@@ -188,7 +188,7 @@ pub fn update_incremental_with_progress(
         stats.skipped_unchanged, stats.skipped_pattern, stats.errors
     );
 
-    // 最终进度回调（100%）
+    // Final progress callback (100%)
     if let Some(ref mut cb) = progress {
         cb(processed, total);
     }
@@ -202,8 +202,8 @@ pub fn update_incremental_with_progress(
     }
 }
 
-/// 索引单个文件：解析 → upsert Tantivy doc → 记录 tree_index。
-/// 返回 true=成功，false=解析失败（已记录 tree_index 避免重试）。
+/// Index a single file: parse → upsert Tantivy doc → record in tree_index.
+/// Returns true on success, false on parse failure (tree_index is still recorded to avoid retries).
 fn index_one(
     path: &Path,
     fields: &SchemaFields,
@@ -219,12 +219,12 @@ fn index_one(
     match parser_registry.parse(path) {
         Ok(parse_result) => {
             let doc = build_document(fields, path, &parse_result, &uid, index_id);
-            // upsert：先删后加
+            // upsert: delete then add
             delete_doc(writer, fields, &uid)?;
             writer
                 .add_document(doc)
                 .map_err(|e| PivotsearchError::IndexIo(e.to_string()))?;
-            // 记录 tree_index
+            // Record in tree_index
             tree_index.upsert_file(&IndexedFile {
                 uid: uid.clone(),
                 path: path_str,
@@ -235,7 +235,7 @@ fn index_one(
             Ok(true)
         }
         Err(PivotsearchError::UnsupportedFormat(_)) => {
-            // 不支持的格式：仍记录到 tree_index（parser=null），避免下次重复尝试
+            // Unsupported format: still record it in tree_index (parser=null) to avoid retrying next time
             tree_index.upsert_file(&IndexedFile {
                 uid,
                 path: path_str,
@@ -246,7 +246,7 @@ fn index_one(
             Ok(false)
         }
         Err(e) => {
-            // 解析失败：记录 tree_index（parser=null）避免重试坏文件
+            // Parse failure: record in tree_index (parser=null) to avoid retrying bad files
             tracing::warn!("解析失败 {}: {}", path.display(), e);
             tree_index.upsert_file(&IndexedFile {
                 uid,
@@ -260,13 +260,13 @@ fn index_one(
     }
 }
 
-/// 删除 Tantivy 中某 uid 的文档。
+/// Delete the Tantivy document for a given uid.
 fn delete_doc(writer: &mut IndexWriter, fields: &SchemaFields, uid: &str) -> Result<()> {
     writer.delete_term(Term::from_field_text(fields.uid, uid));
     Ok(())
 }
 
-/// 取文件 mtime（毫秒时间戳）。
+/// Get the file mtime (millisecond timestamp).
 fn file_mtime(path: &Path) -> Result<i64> {
     let meta = path.metadata().map_err(|e| PivotsearchError::FsIo {
         path: path.display().to_string(),
@@ -289,7 +289,7 @@ mod tests {
     use pivotsearch_contracts::{ParseResult, Parser, ParserRegistry};
     use tantivy::Index;
 
-    /// 测试用 parser：只处理 .txt，返回固定内容。
+    /// Test parser: only handles .txt, returns fixed content.
     struct DummyParser;
     impl Parser for DummyParser {
         fn extensions(&self) -> &[&str] {
@@ -380,9 +380,9 @@ mod tests {
         let config = IncrementalConfig::default();
         let registry = DummyRegistry;
 
-        // 第一次：新增
+        // First run: add
         update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
-        // 第二次：应全跳过
+        // Second run: should skip everything
         let result = update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
         assert_eq!(result, UpdateResult::SuccessUnchanged);
     }
@@ -403,7 +403,7 @@ mod tests {
 
         update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
 
-        // 修改文件（确保 mtime 变化）
+        // Modify the file (ensure mtime changes)
         std::thread::sleep(std::time::Duration::from_millis(50));
         std::fs::write(&path, "hello modified").unwrap();
 
@@ -430,7 +430,7 @@ mod tests {
         update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
         assert_eq!(ti.count_files("default").unwrap(), 2);
 
-        // 删除 b.txt
+        // Delete b.txt
         std::fs::remove_file(&b).unwrap();
         let result = update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
         assert_eq!(result, UpdateResult::SuccessChanged);

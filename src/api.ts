@@ -1,10 +1,10 @@
-// Tauri IPC 桥接：前端调用 Rust #[tauri::command]
-// 封装所有后端命令，提供类型安全的调用接口。
+// Tauri IPC bridge: frontend invokes Rust #[tauri::command].
+// Wraps all backend commands, providing a type-safe call interface.
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-// ── 类型定义（与 Rust 端对齐）──
+// ── Type definitions (aligned with the Rust side) ──
 
 export interface SearchResult {
   uid: string;
@@ -47,7 +47,7 @@ export interface PreviewData {
   exists: boolean;
 }
 
-// ── 命令封装 ──
+// ── Command wrappers ──
 
 export async function addIndex(path: string): Promise<string> {
   return invoke<string>("add_index", { path });
@@ -83,7 +83,7 @@ export async function rebuildIndex(id: string): Promise<void> {
   return invoke<void>("rebuild_index", { id });
 }
 
-// ── 事件监听 ──
+// ── Event listeners ──
 
 export interface IndexProgress {
   index_id: string;
@@ -112,7 +112,7 @@ export function onIndexProgress(
   });
 }
 
-// ── 文件操作 ──
+// ── File operations ──
 
 export async function copyToClipboard(text: string): Promise<void> {
   return invoke<void>("copy_to_clipboard", { text });

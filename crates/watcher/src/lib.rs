@@ -1,13 +1,14 @@
 //! # pivotsearch-watcher
 //!
-//! 文件监听层：notify + 防抖 + 事件过滤 + mtime 二次校验。
+//! File watching layer: notify + debouncing + event filtering + mtime second-pass verification.
 //!
-//! 设计：
-//! - notify-debouncer-full 实现 1s 单 flight 防抖（编辑器保存触发 N 次事件只发 1 个）
-//! - 事件过滤：跳过 lock/隐藏文件/索引目录自身（防自反馈死循环）
-//! - mtime 二次校验：watcher 命令调用方持有 TreeIndex，对 modify 事件查 mtime 比对去噪
+//! Design:
+//! - notify-debouncer-full provides a 1s single-flight debounce (an editor save that fires N events emits only 1)
+//! - Event filtering: skip lock/hidden files and the index directory itself (prevents a self-feedback loop)
+//! - mtime second-pass verification: the watcher command caller holds the TreeIndex and, for modify events,
+//!   compares mtime to suppress noise
 //!
-//! watcher 只产出有效 WatchEvent，索引更新由 queue 消费（依赖解耦）。
+//! The watcher only emits valid WatchEvents; index updates are consumed from a queue (decoupled dependencies).
 
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, FileIdMap};
 use notify::Watcher as _NotifyTrait;
@@ -18,38 +19,38 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-/// 事件过滤配置。
+/// Event filter configuration.
 #[derive(Clone, Default)]
 pub struct WatchFilter {
-    /// 要跳过的文件名模式（lock/隐藏文件默认跳过）。
+    /// File name patterns to skip (lock/hidden files are skipped by default).
     pub skip_suffixes: Vec<String>,
-    /// 要跳过的目录（如索引目录自身，防自反馈）。
+    /// Directories to skip (e.g. the index directory itself, to prevent self-feedback).
     pub skip_dirs: Vec<PathBuf>,
 }
 
 impl WatchFilter {
-    /// 判断一个路径是否应被过滤（跳过）。
+    /// Determines whether a path should be filtered out (skipped).
     pub fn should_skip(&self, path: &Path) -> bool {
         let name = path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("");
 
-        // 跳过 lock 文件
+        // Skip lock files
         if name.ends_with(".lock") {
             return true;
         }
-        // 跳过隐藏文件
+        // Skip hidden files
         if name.starts_with('.') {
             return true;
         }
-        // 跳过指定目录下的文件
+        // Skip files under the specified directories
         for skip_dir in &self.skip_dirs {
             if path.starts_with(skip_dir) {
                 return true;
             }
         }
-        // 跳过指定后缀
+        // Skip specified suffixes
         for suffix in &self.skip_suffixes {
             if name.ends_with(suffix.as_str()) {
                 return true;
@@ -59,16 +60,17 @@ impl WatchFilter {
     }
 }
 
-/// 默认 watcher 实现。
+/// Default watcher implementation.
 ///
-/// 持有 notify debouncer，对每个 index_id 维护一个 watch。
-/// 事件通过内部 channel 接收、过滤、转发到用户提供的回调或 channel。
+/// Holds a notify debouncer and maintains one watch per index_id.
+/// Events are received via an internal channel, filtered, then forwarded to a user-supplied
+/// callback or channel.
 pub struct PivotWatcher {
-    /// debouncer 句柄（保活用）。
+    /// Debouncer handle (kept alive).
     debouncers: Mutex<HashMap<String, Debouncer<notify::RecommendedWatcher, FileIdMap>>>,
-    /// 事件过滤器。
+    /// Event filter.
     filter: Arc<WatchFilter>,
-    /// index_id → 监听路径。
+    /// index_id → watched path.
     paths: Mutex<HashMap<String, PathBuf>>,
 }
 
@@ -81,9 +83,10 @@ impl PivotWatcher {
         }
     }
 
-    /// 启动监听并把事件发送到 callback。
+    /// Starts watching and sends events to the callback.
     ///
-    /// notify-debouncer-full 在后台线程做防抖，过滤后的有效事件调用 callback。
+    /// notify-debouncer-full performs debouncing on a background thread; valid filtered events
+    /// invoke the callback.
     pub fn watch_with_callback<F>(&self, index_id: &str, path: &Path, callback: F) -> Result<()>
     where
         F: Fn(WatchEvent) + Send + 'static,
@@ -91,7 +94,7 @@ impl PivotWatcher {
         let filter = self.filter.clone();
         let index_id_owned = index_id.to_string();
 
-        // 1s 防抖窗口（编辑器保存常触发多次事件）
+        // 1s debounce window (an editor save often fires multiple events)
         let mut debouncer = new_debouncer(
             Duration::from_secs(1),
             None,
@@ -99,17 +102,17 @@ impl PivotWatcher {
                 match result {
                     Ok(events) => {
                         for event in events {
-                            // DebouncedEvent Deref<Target=Event>，event.paths 是 Vec<PathBuf>
+                            // DebouncedEvent Deref<Target=Event>; event.paths is Vec<PathBuf>
                             let path = match event.paths.first() {
                                 Some(p) => p.clone(),
                                 None => continue,
                             };
-                            // 过滤
+                            // Filter
                             if filter.should_skip(&path) {
                                 continue;
                             }
                             let kind = map_event_kind(&event.kind);
-                            // 跳过无意义的变体事件
+                            // Skip meaningless event variants
                             if kind.is_none() {
                                 continue;
                             }
@@ -143,8 +146,8 @@ impl PivotWatcher {
 
 impl Watcher for PivotWatcher {
     fn watch(&self, index_id: &str, path: &Path) -> Result<()> {
-        // Watcher trait 的 watch 用空回调（实际监听由 watch_with_callback 驱动）
-        // 这里提供一个无操作的默认实现，真正的 callback 由调用方设置
+        // The Watcher trait's watch uses a no-op callback (actual watching is driven by watch_with_callback)
+        // Here we provide a no-op default implementation; the real callback is set by the caller
         self.watch_with_callback(index_id, path, |_| {})
     }
 
@@ -159,7 +162,7 @@ impl Watcher for PivotWatcher {
     }
 }
 
-/// notify EventKind → pivotsearch WatchEventKind。
+/// Maps notify EventKind → pivotsearch WatchEventKind.
 fn map_event_kind(kind: &notify::EventKind) -> Option<WatchEventKind> {
     use notify::EventKind;
     match kind {
@@ -208,11 +211,11 @@ mod tests {
             })
             .unwrap();
 
-        // 创建文件触发事件
+        // Create a file to trigger an event
         let path = dir.path().join("new.txt");
         std::fs::write(&path, "content").unwrap();
 
-        // 等待防抖窗口（1s）+ 事件传播
+        // Wait for the debounce window (1s) + event propagation
         std::thread::sleep(Duration::from_millis(1500));
 
         let events = received.lock();
@@ -220,7 +223,7 @@ mod tests {
             !events.is_empty(),
             "应收到至少一个事件（创建 new.txt）"
         );
-        // 至少有一个事件路径含 new.txt
+        // At least one event path should contain new.txt
         assert!(
             events.iter().any(|e| e.path.contains("new.txt")),
             "应有 new.txt 的事件，实际: {:?}",
@@ -241,7 +244,7 @@ mod tests {
             })
             .unwrap();
 
-        // 创建 lock 文件（应被过滤）
+        // Create a lock file (should be filtered)
         std::fs::write(dir.path().join(".tantivy-writer.lock"), "lock").unwrap();
         std::thread::sleep(Duration::from_millis(1500));
 
