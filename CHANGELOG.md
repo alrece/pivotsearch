@@ -1,105 +1,121 @@
 # Changelog
 
-本项目的所有重要变更记录在此文件中。
+English | [中文](CHANGELOG.zh-CN.md)
 
-格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
-版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-07-03
+
+### Added
+- **Bilingual UI (i18n)**: Chinese/English language toggle in the top toolbar. Default follows system locale (`navigator.language`); manual choice persists to localStorage. Switch is instant (reactive).
+- **`psearch --lang <en|zh>` CLI flag**: controls human-readable output language. Default `en`. JSON output keys remain fixed English regardless of `--lang`, preserving AI Agent parsing stability.
+- **English-first documentation**: README, CHANGELOG, AGENTS.md, CLAUDE.md now English-primary, with parallel Chinese versions (`*.zh-CN.md`) and cross-link navigation.
+- **Lightweight i18n composable** (~60 lines, zero deps) instead of vue-i18n — chosen for the ~40-string scale.
+
+### Changed
+- All Chinese code comments in `crates/`, `src/`, `src-tauri/src/` translated to English (~422 lines). No logic changes.
 
 ## [0.4.0] - 2026-07-03
 
 ### Changed
-- **应用图标重做**：采用品牌绿色 3D "PS" 图标，套用 macOS squircle（连续曲率圆角，半径 22.4%）规范
-  - 50 个图标文件全部重新生成（macOS `.icns` / Windows `.ico` / Linux PNG / iOS 18 张 / Android 15 张）
-  - 1px 极窄白边，PS 字母几乎顶满圆角画板
-  - 圆角边缘抗锯齿处理（Gaussian 平滑）
-  - 三端图标风格统一
+- **App icon redesign**: brand green 3D "PS" icon using the macOS squircle (continuous-curvature rounded corners, radius 22.4%) spec
+  - 50 icon files regenerated (macOS `.icns` / Windows `.ico` / Linux PNG / iOS 18 / Android 15)
+  - 1px ultra-narrow white border; the PS letters nearly fill the rounded canvas
+  - Anti-aliasing on the rounded edges (Gaussian smoothing)
+  - Unified icon style across all three platforms
 
 ### Fixed
-- 修复 dev 模式下图标未正确显示 squircle 圆角的问题（圆角半径参数从 13% 修正为标准 22.4%）
+- Fixed icon not displaying the squircle corners correctly in dev mode (corner-radius parameter corrected from 13% to the standard 22.4%)
 
 ## [0.3.1] - 2026-07-03
 
 ### Fixed
-- macOS ad-hoc 签名修复（CI 中 `codesign --force --deep --sign -`）
+- macOS ad-hoc signing fix (`codesign --force --deep --sign -` in CI)
 
 ## [0.3.0] - 2026-07-03
 
 ### Added
-- **psearch CLI 工具**：供 AI Agent / CloudPivot 调用，JSON 输出
-  - `psearch search "query" --json`（Agent 核心调用接口）
+- **psearch CLI tool**: for AI Agent / CloudPivot invocation, with JSON output
+  - `psearch search "query" --json` (Agent core call interface)
   - `psearch index/list/remove/rebuild/preview/status`
-  - 数据目录与桌面 app 共享
-  - 随 app 安装部署（Tauri sidecar）+ macOS 符号链接注册
-- **索引进度条**：新建/重建时底部显示百分比 + 文件数（如 `[Documents] 正在索引... 45%`）
-- **索引详情查看**：双击索引行弹出详情（文件类型分布 + 最近修改文件列表）
-- **大小写敏感搜索**：搜索栏 Aa 切换按钮
-- **复制路径 / 打开目录**：搜索结果每项的快捷操作按钮
-- **可拖动分隔栏**：结果列表和预览面板宽度可自由调整
-- **目录选择器**：系统原生目录选择对话框添加索引
-- **macOS ad-hoc 签名**：解决 Safari 下载 DMG 的 Gatekeeper 拦截
+  - Data directory shared with the desktop app
+  - Deployed alongside the app (Tauri sidecar) + macOS symlink registration
+- **Indexing progress bar**: shows percentage + file count at the bottom during new/rebuild (e.g. `[Documents] Indexing... 45%`)
+- **Index details view**: double-click an index row to open a details popup (file-type distribution + recently modified files list)
+- **Case-sensitive search**: Aa toggle button in the search bar
+- **Copy path / Open directory**: quick-action buttons on each search result item
+- **Draggable divider**: freely adjust the width of the result list and preview panel
+- **Directory picker**: system-native directory selection dialog for adding indexes
+- **macOS ad-hoc signing**: resolves Safari Gatekeeper interception when downloading the DMG
 
 ### Changed
-- 界面仿 AnyTXT 三栏布局（顶搜索栏 + 左结果列表 + 右预览面板 + 底状态栏）
-- 品牌名统一为 PivotSearch
-- 搜索结果标题改为显示带后缀文件名
-- 三端 CI/Release workflow（含 sidecar 编译 + 产物上传）
+- UI follows the AnyTXT three-column layout (top search bar + left result list + right preview panel + bottom status bar)
+- Brand name unified as PivotSearch
+- Search result titles now display the filename with its extension
+- CI/Release workflow for all three platforms (including sidecar compilation + artifact upload)
 
 ### Fixed
-- 重启后索引列表丢失（state 从磁盘恢复）
-- 重复添加同路径报错（open-or-create）
-- snippet 高亮为空（snippet_text 字段 + 手动高亮）
-- Tauri 版本 mismatch（NPM/Rust 对齐到 2.11.x）
+- Index list lost after restart (state restored from disk)
+- Error when adding the same path twice (open-or-create)
+- Empty snippet highlighting (snippet_text field + manual highlighting)
+- Tauri version mismatch (NPM/Rust aligned to 2.11.x)
 
 ## [0.2.0] - 2026-07-02
 
 ### Added
-- 三端安装包 CI（macOS .dmg / Linux .deb+.AppImage / Windows .msi+.exe）
-- GitHub Release 自动创建（含安装说明）
+- Installer CI for all three platforms (macOS .dmg / Linux .deb+.AppImage / Windows .msi+.exe)
+- GitHub Release auto-creation (with installation instructions)
 
 ## [0.1.0] - 2026-07-02
 
 ### Added
-- 跨平台桌面应用（Tauri 2 + Vue 3 + Rust），支持 macOS / Windows / Linux
-- 9 种文件格式全文解析：PDF / Word(docx) / Excel(xlsx/xls/csv) / PPT(pptx) / Markdown / HTML / 纯文本+源代码 / ePub / 归档穿透(zip/tar)
-- Tantivy 倒排索引引擎 + jieba 中文分词（含停用词过滤）
-- 增量索引：mtime 比对 + unseenDocs 文件树 diff + SQLite 元数据持久化
-- 文件系统监听：notify + 1s 防抖 + 事件过滤 + mtime 二次校验
-- 单工作线程任务队列：Task 状态机 + UPDATE/REBUILD + 去重
-- 多索引合并搜索：跨目录查询 + 文件类型/大小/索引根过滤
-- snippet 高亮：snippet_text 字段 + 手动 query 词高亮
-- 即时搜索 UI（300ms debounce）+ 结果列表 + 预览面板（重新解析原文件）
-- 索引管理面板：系统原生目录选择器 + 添加/删除/重建索引
-- GBK/Big5 遗留编码检测（chardetng + encoding_rs）
-- OCR 管道（feature gate）：kreuzberg-tesseract + image 解码 + TesseractAPI
-- PDFium 动态链接支持（bblanchon/pdfium-binaries）
-- 三端 CI（GitHub Actions 矩阵）+ Release workflow（4 target）
-- CLI 工具（`pivotsearch index <dir>` / `pivotsearch search <query>`）
-- Loop Engineering 工程方法论（.loop/openspec/.planning 全程可审计）
-- 44 单元测试（含 OCR 真实识别验证）
+- Cross-platform desktop app (Tauri 2 + Vue 3 + Rust), supporting macOS / Windows / Linux
+- Full-text parsing for 9 file formats: PDF / Word (docx) / Excel (xlsx/xls/csv) / PPT (pptx) / Markdown / HTML / plain text + source code / ePub / archive traversal (zip/tar)
+- Tantivy inverted-index engine + jieba Chinese word segmentation (with stop-word filtering)
+- Incremental indexing: mtime comparison + unseenDocs file-tree diff + SQLite metadata persistence
+- File-system watcher: notify + 1s debounce + event filtering + mtime secondary verification
+- Single worker-thread task queue: Task state machine + UPDATE/REBUILD + deduplication
+- Multi-index merged search: cross-directory queries + file-type/size/index-root filtering
+- Snippet highlighting: snippet_text field + manual query-term highlighting
+- Instant search UI (300ms debounce) + result list + preview panel (re-parses the original file)
+- Index management panel: system-native directory picker + add/delete/rebuild index
+- GBK/Big5 legacy encoding detection (chardetng + encoding_rs)
+- OCR pipeline (feature gate): kreuzberg-tesseract + image decoding + TesseractAPI
+- PDFium dynamic-linking support (bblanchon/pdfium-binaries)
+- CI for all three platforms (GitHub Actions matrix) + Release workflow (4 targets)
+- CLI tool (`pivotsearch index <dir>` / `pivotsearch search <query>`)
+- Loop Engineering methodology (.loop/openspec/.planning fully auditable)
+- 44 unit tests (including real OCR recognition verification)
 
 ### Performance
-- 索引吞吐：1087 文件/秒（基线测试）
-- 索引体积：~164KB / 500 文件
+- Indexing throughput: 1087 files/second (baseline test)
+- Index size: ~164KB / 500 files
 
 ### Known Limitations
-- .doc / .ppt 老格式不支持（建议转换为 .docx / .pptx）
-- PDFium 需运行 `scripts/fetch-pdfium.sh` 下载
-- OCR 需 `--features ocr` 编译 + 语言包
-- Windows/Linux 打包需在对应平台 CI 环境
+- Legacy .doc / .ppt formats not supported (recommend converting to .docx / .pptx)
+- PDFium requires running `scripts/fetch-pdfium.sh` to download
+- OCR requires `--features ocr` compilation + language packs
+- Windows/Linux packaging must run in the corresponding platform's CI environment
 
 ## [0.1.0-alpha] - 2026-07-02
 
 ### Added
-- 工程脚手架：9 crate workspace + 方法论框架 + 8 capability spec
-- 核心索引闭环：Tantivy schema + Parser 注册表 + SimpleSearcher + CLI
-- 增量与监听：SQLite tree_index + notify + 任务队列
-- 全格式补全：epub/pptx/归档穿透 + 多索引合并
-- Tauri 桌面 UI 骨架：Vue 3 前端 + #[tauri::command] 桥接
-- CI + 文档：三端矩阵 + 中文停用词调优
+- Engineering scaffold: 9-crate workspace + methodology framework + 8 capability specs
+- Core indexing loop: Tantivy schema + Parser registry + SimpleSearcher + CLI
+- Incremental indexing and watcher: SQLite tree_index + notify + task queue
+- Full-format completion: epub/pptx/archive traversal + multi-index merging
+- Tauri desktop UI skeleton: Vue 3 frontend + #[tauri::command] bridge
+- CI + documentation: three-platform matrix + Chinese stop-word tuning
 
-[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.5.0
+[0.4.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.4.0
+[0.3.1]: https://github.com/alrece/pivotsearch/releases/tag/v0.3.1
 [0.3.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.3.0
 [0.2.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.2.0
 [0.1.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.1.0

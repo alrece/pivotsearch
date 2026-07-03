@@ -1,36 +1,38 @@
 # CLAUDE.md
 
-本文件是 Claude Code 的快速入口。与 `AGENTS.md` 的关系：如果冲突，以 `AGENTS.md` 为准。
+English | [中文](CLAUDE.zh-CN.md)
 
-## 项目一句话
+Quick-entry guide for Claude Code. Relationship to `AGENTS.md`: if they conflict, `AGENTS.md` wins.
 
-`pivotsearch` 是跨平台（Win/macOS/Linux）本地全文搜索桌面应用，AnyTXT 的开源替代，用 Rust（Tantivy + Tauri）现代栈复刻 DocFetcher 的核心设计并补齐 OCR。
+## One-liner
 
-## 阅读顺序
+`pivotsearch` is a cross-platform (Win/macOS/Linux) local full-text search desktop app — an open-source alternative to AnyTXT Searcher. It uses a modern Rust stack (Tantivy + Tauri) to replicate DocFetcher's core design and adds OCR support.
 
-1. `AGENTS.md` — 仓库宪法，架构事实 + 开发约定 + 合规红线（最高权威）
-2. `.loop/STATE.yaml` — 当前迭代状态（单一事实源）
-3. `openspec/changes/pivotsearch-v1-local-search/` — 规格驱动开发
-4. `.planning/ROADMAP.md` — Phase 路线图
-5. `docs/` — 技术文档
+## Reading order
 
-## 关键约定速查
+1. `AGENTS.md` — the repository constitution: architectural facts + dev conventions + clean-room red lines (highest authority)
+2. `.loop/STATE.yaml` — current iteration state (single source of truth)
+3. `openspec/changes/pivotsearch-v1-local-search/` — spec-driven development
+4. `.planning/ROADMAP.md` — phase roadmap
+5. `docs/` — technical docs
 
-- **依赖方向铁律**：`core` 编排层只依赖 `contracts` trait，绝不 import 具体实现；只有 `cli`/`src-tauri` 能 import 具体实现
-- **Tantivy 约束**：schema 不可变（变更需 reindex）；单 writer 强约束（同索引目录同时只能一个 writer）
-- **净室红线**：禁止复制 DocFetcher Java 代码/类名/标识符，只复刻设计逻辑；产出后跑 `grep -ri "docfetcher" crates/ src/ src-tauri/` 验证
-- **原生依赖**：PDFium 静态链接；Tesseract 可选 + 语言包按需下载；.doc/.ppt v1 不支持
-- **中文输出**：面向用户的所有说明用简体中文，代码/命令/路径/函数名保留原文
+## Key conventions cheat-sheet
 
-## 命令索引
+- **Dependency-direction iron rule**: the `core` orchestration layer depends only on `contracts` traits — it must never import concrete implementations. Only `cli` / `src-tauri` may import concrete implementations.
+- **Tantivy constraints**: schema is immutable (changes require reindex); single-writer hard constraint (only one writer per index directory at a time).
+- **Clean-room red line**: do NOT copy DocFetcher Java code/class names/identifiers — only replicate its design logic. After producing output, run `grep -ri "docfetcher" crates/ src/ src-tauri/` to verify.
+- **Native dependencies**: PDFium is statically linked; Tesseract is optional + language packs downloaded on demand; `.doc` / `.ppt` are not supported in v1.
+- **Loop output language**: user-facing Loop Engineering output uses Simplified Chinese; code/commands/paths/function names stay in their original form.
+
+## Command index
 
 ```bash
-cargo check && cargo test                    # 编译 + 测试
+cargo check && cargo test                    # compile + test
 cargo clippy --all-targets -- -D warnings    # lint
-cargo tauri dev                              # 桌面端开发
-grep -ri "docfetcher" crates/ src/ src-tauri/ # 净室检查（无输出 = 通过）
+cargo tauri dev                              # desktop dev mode
+grep -ri "docfetcher" crates/ src/ src-tauri/ # clean-room check (no output = pass)
 ```
 
 ## Loop Engineering
 
-仅在 `/loop:*` 命令显式调用时介入。状态读取 `.loop/STATE.yaml`，事件追加 `.loop/timeline.jsonl`。详见 `AGENTS.md` 的 "Loop Engineering 协作规范" 章节。
+Engages only when `/loop:*` commands are explicitly invoked. State is read from `.loop/STATE.yaml`; events are appended to `.loop/timeline.jsonl`. See the "Loop Engineering" section in `AGENTS.md`.

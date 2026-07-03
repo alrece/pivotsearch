@@ -1,6 +1,6 @@
 # pivotsearch
 
-> 跨平台本地全文搜索桌面应用 · AnyTXT 的开源替代 · Windows / macOS / Linux
+> Cross-platform local full-text search desktop app · Open-source alternative to AnyTXT · Windows / macOS / Linux
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/alrece/pivotsearch/actions/workflows/ci.yml/badge.svg)](https://github.com/alrece/pivotsearch/actions/workflows/ci.yml)
@@ -8,167 +8,172 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-red.svg)](https://v2.tauri.app/)
 
-`pivotsearch` 是一个完全本地运行、离线可用的全文搜索工具。它索引你硬盘上的文档内容（PDF / Word / Excel / PowerPoint / Markdown / HTML / 纯文本 / ePub / 源代码），让你像用 Google 一样秒级搜索本地文件——不发送任何数据到云端。
+English | [中文](README.zh-CN.md)
 
-## 界面预览
+`pivotsearch` is a fully local, offline-capable full-text search tool. It indexes the content of documents on your hard drive (PDF / Word / Excel / PowerPoint / Markdown / HTML / plain text / ePub / source code), letting you search local files in seconds like Google—without sending any data to the cloud.
 
-仿 AnyTXT 经典三栏布局：
+## Interface Preview
+
+Classic AnyTXT-style three-pane layout:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ 🔍 pivotsearch │ [搜索框........] [范围▾] [类型▾] [搜索] [索引管理] │
+│ 🔍 pivotsearch │ [Search box....] [Scope▾] [Type▾] [Search] [Manage Indexes] │
 ├────────────────────────────────────┬─────────────────────────────┤
-│ 找到 3 个结果                        │  report.md                  │
+│ Found 3 results                     │  report.md                  │
 ├────────────────────────────────────┤                             │
-│ 📃 季度报告                          │  预览面板                    │
-│ ...命中片段 营收 增长...              │                             │
-│ /path/report.md · 2KB · 2024-01-01  │  本季度营收增长百分之二十     │
-├────────────────────────────────────┤  超出预期目标。              │
-│ 📝 技术方案                          │  技术部门贡献了主要增长。     │
-│ ...命中片段 React 前端...            │                             │
-│ /path/plan.docx · 5KB · ...         │  （关键词蓝色高亮）          │
+│ 📃 Quarterly report                 │  Preview panel              │
+│ ...match snippet revenue growth...   │                             │
+│ /path/report.md · 2KB · 2024-01-01  │  Revenue grew twenty percent │
+├────────────────────────────────────┤  this quarter, exceeding     │
+│ 📝 Technical plan                   │  expectations.              │
+│ ...match snippet React frontend...   │  The tech department        │
+│ /path/plan.docx · 5KB · ...         │  contributed the main growth.│
+│                                     │  (keywords highlighted blue)│
 ├────────────────────────────────────┴─────────────────────────────┤
-│ 📂 2 个索引目录 · Documents(42349文件) · Notes(567文件)             │
+│ 📂 2 index directories · Documents(42349 files) · Notes(567 files)│
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## 核心特性
+## Core Features
 
-- ⚡ **秒级检索** — 基于 Tantivy 倒排索引，索引吞吐 **1087 文件/秒**
-- 🔄 **增量后台索引** — 文件系统监听 + mtime 比对，改动即更新
-- 📄 **9 种格式** — PDF / Word(docx) / Excel(xlsx) / PPT(pptx) / Markdown / HTML / TXT / ePub / 源代码 + 归档(zip/tar 穿透)
-- 🇨🇳 **中文友好** — jieba 分词 + 停用词过滤 + GBK/Big5 编码检测
-- 🖥️ **原生桌面应用** — Tauri 2 + Vue 3，三端打包（.app / .dmg / .exe / .deb）
-- 🔍 **即时搜索 + 预览** — 输入即搜（300ms debounce）+ 点击预览全文 + 关键词高亮
-- 📁 **目录选择器** — 系统原生目录选择对话框添加索引
-- 🔒 **完全离线** — 零数据外泄
-- 🔬 **OCR（可选）** — Tesseract 集成，图片/扫描件可搜（feature gate）
+- ⚡ **Instant retrieval** — Built on the Tantivy inverted index, with indexing throughput of **1087 files/second**
+- 🔄 **Incremental background indexing** — Filesystem watching + mtime comparison, updates on change
+- 📄 **9 formats** — PDF / Word(docx) / Excel(xlsx) / PPT(pptx) / Markdown / HTML / TXT / ePub / source code + archive passthrough (zip/tar)
+- 🇨🇳 **Chinese-friendly** — jieba tokenization + stop-word filtering + GBK/Big5 encoding detection
+- 🖥️ **Native desktop app** — Tauri 2 + Vue 3, packaged for three platforms (.app / .dmg / .exe / .deb)
+- 🔍 **Instant search + preview** — Search as you type (300ms debounce) + click to preview full text + keyword highlighting
+- 📁 **Directory picker** — Add indexes via the native system directory picker dialog
+- 🔒 **Fully offline** — Zero data leakage
+- 🔬 **OCR (optional)** — Tesseract integration, images/scanned documents are searchable (feature gate)
 
-## 下载安装
+## Download & Installation
 
-### 从 Release 下载（推荐）
+### Download from Releases (recommended)
 
-前往 [Releases](https://github.com/alrece/pivotsearch/releases) 下载对应平台的安装包：
+Go to [Releases](https://github.com/alrece/pivotsearch/releases) to download the installer for your platform:
 
-| 平台 | 格式 |
+| Platform | Format |
 |---|---|
 | macOS (Apple Silicon) | `.dmg` |
 | macOS (Intel) | `.dmg` |
 | Windows | `.msi` / `.exe` |
 | Linux | `.deb` / `.AppImage` |
 
-> **macOS 用户注意**：由于本应用未使用 Apple 开发者证书签名，首次打开可能提示"无法验证开发者"。解决方法：
-> - 右键点击 app → 选择「打开」→ 点击「打开」确认
-> - 或在终端运行：`sudo xattr -rd com.apple.quarantine /Applications/pivotsearch.app`
+> **Note for macOS users**: Since this app is not signed with an Apple Developer certificate, you may see a "cannot verify the developer" warning on first launch. To resolve this:
+> - Right-click the app → select "Open" → click "Open" to confirm
+> - Or run in Terminal: `sudo xattr -rd com.apple.quarantine /Applications/pivotsearch.app`
 
-### 从源码构建
+### Build from source
 
 ```bash
 git clone https://github.com/alrece/pivotsearch.git
 cd pivotsearch
 pnpm install
-pnpm tauri build          # 打包
-# 或开发模式：
-pnpm tauri dev            # 热重载开发
+pnpm tauri build          # package
+# or development mode:
+pnpm tauri dev            # hot-reload development
 ```
 
-**前置依赖**：Rust 1.75+、Node 20+、pnpm、（macOS）Xcode Command Line Tools
+**Prerequisites**: Rust 1.75+, Node 20+, pnpm, (macOS) Xcode Command Line Tools
 
-### PDF 支持（可选）
+### PDF support (optional)
 
-PDF 解析需要 PDFium 库。运行构建脚本下载：
+PDF parsing requires the PDFium library. Run the build script to download it:
 
 ```bash
-./scripts/fetch-pdfium.sh    # 自动检测平台并下载
+./scripts/fetch-pdfium.sh    # auto-detects platform and downloads
 ```
 
-### OCR 支持（可选）
+### OCR support (optional)
 
 ```bash
-cargo build --features ocr   # 启用 OCR（首次编译约 15s，构建 Tesseract）
+cargo build --features ocr   # enable OCR (first build ~15s, builds Tesseract)
 ```
 
-## 使用
+## Usage
 
-1. 启动 pivotsearch
-2. 点「索引管理」→「📁 浏览」选择要索引的目录
-3. 等待索引完成（底部状态栏显示进度）
-4. 在搜索框输入关键词，即时出结果
+1. Launch pivotsearch
+2. Click "Manage Indexes" → "📁 Browse" to select the directory to index
+3. Wait for indexing to complete (the bottom status bar shows progress)
+4. Type keywords into the search box for instant results
 
-## 支持的格式
+## Supported Formats
 
-| 格式 | 扩展名 | 状态 |
+| Format | Extension | Status |
 |---|---|---|
-| PDF | `.pdf` | ✅ 需 PDFium |
+| PDF | `.pdf` | ✅ requires PDFium |
 | Word | `.docx` | ✅ |
 | Excel | `.xlsx` `.xls` `.csv` | ✅ |
 | PowerPoint | `.pptx` | ✅ |
 | Markdown | `.md` | ✅ |
 | HTML | `.html` `.htm` | ✅ |
-| 纯文本/源代码 | `.txt` `.rs` `.py` `.js` `.json` `.yaml` 等 | ✅ |
+| Plain text / source code | `.txt` `.rs` `.py` `.js` `.json` `.yaml` etc. | ✅ |
 | ePub | `.epub` | ✅ |
-| 归档（穿透索引） | `.zip` `.tar` `.tar.gz` | ✅ |
-| 图片（OCR） | `.jpg` `.png` `.tiff` | ⚠️ 可选 feature |
-| Word 老格式 | `.doc` | ❌ 请转 `.docx` |
+| Archive (passthrough indexing) | `.zip` `.tar` `.tar.gz` | ✅ |
+| Image (OCR) | `.jpg` `.png` `.tiff` | ⚠️ optional feature |
+| Legacy Word | `.doc` | ❌ please convert to `.docx` |
 
-## 技术栈
+## Tech Stack
 
-**后端（Rust）**：Tantivy 0.24（全文引擎）· jieba-rs（中文分词）· notify（文件监听）· SQLite（元数据）· pdfium-render（PDF）· kreuzberg-tesseract（OCR）
+**Backend (Rust)**: Tantivy 0.24 (full-text engine) · jieba-rs (Chinese tokenization) · notify (file watching) · SQLite (metadata) · pdfium-render (PDF) · kreuzberg-tesseract (OCR)
 
-**前端**：Tauri 2 · Vue 3 · TypeScript · Element Plus · Pinia
+**Frontend**: Tauri 2 · Vue 3 · TypeScript · Element Plus · Pinia
 
-详见 [技术选型文档](docs/03-tech-selection.md)。
+See the [tech selection doc](docs/03-tech-selection.md) for details.
 
-## 架构
+## Architecture
 
 ```
 crates/
-├── contracts/    契约层（trait 定义，依赖终点）
-├── parser/       解析层（9 格式 parser + 注册表两级选择）
-├── index/        索引层（Tantivy schema + 增量算法 + SQLite）
-├── watcher/      监听层（notify + 防抖 + 事件过滤）
-├── queue/        队列层（单工作线程 + Task 状态机）
-├── search/       查询层（单索引 + 多索引合并 + 高亮）
-├── ocr/          OCR（feature gate 可选）
-├── core/         编排层（只依赖 contracts）
-└── cli/          CLI 工具（开发调试）
-src-tauri/        Tauri 桌面后端（命令桥接）
-src/              Vue 3 前端
+├── contracts/    contract layer (trait definitions, dependency sink)
+├── parser/       parsing layer (9-format parsers + registry two-stage selection)
+├── index/        indexing layer (Tantivy schema + incremental algorithm + SQLite)
+├── watcher/      watching layer (notify + debounce + event filtering)
+├── queue/        queue layer (single worker thread + Task state machine)
+├── search/       query layer (single-index + multi-index merge + highlighting)
+├── ocr/          OCR (feature gate, optional)
+├── core/         orchestration layer (depends only on contracts)
+└── cli/          CLI tool (development & debugging)
+src-tauri/        Tauri desktop backend (command bridge)
+src/              Vue 3 frontend
 ```
 
-## CLI 模式
+## CLI Mode
 
 ```bash
-# 索引目录
+# index a directory
 cargo run --bin pivotsearch -- index /path/to/docs
 
-# 搜索
-cargo run --bin pivotsearch -- search "关键词"
+# search
+cargo run --bin pivotsearch -- search "keywords"
 ```
 
-## 开发
+## Development
 
 ```bash
-cargo check && cargo test     # 后端编译 + 测试（44 测试）
-pnpm build                    # 前端构建
-make cleanroom                # 净室合规检查
-pnpm tauri dev                # 桌面端热重载开发
+cargo check && cargo test     # backend build + tests (44 tests)
+pnpm build                    # frontend build
+make cleanroom                # clean-room compliance check
+pnpm tauri dev                # desktop hot-reload development
 ```
 
-项目使用 Loop Engineering 方法论管理（`.loop/` + `openspec/` + `.planning/`），全程可审计。详见 [AGENTS.md](AGENTS.md)。
+The project is managed using the Loop Engineering methodology (`.loop/` + `openspec/` + `.planning/`), fully auditable throughout. See [AGENTS.md](AGENTS.md) for details.
 
-## 项目状态
+## Project Status
 
-**v0.4.0** — macOS squircle 规范应用图标 + 品牌绿色 3D "PS" 视觉重做。
+**v0.5.0** — i18n support (Chinese/English UI toggle + `--lang` CLI flag) + English-first documentation.
 
-**v0.3.0** — 三端安装包 + psearch CLI + 进度条 + 索引详情 + 大小写敏感搜索。
+**v0.4.0** — macOS squircle-style app icon + brand-green 3D "PS" visual redesign.
 
-详见 [CHANGELOG.md](CHANGELOG.md)。
+**v0.3.0** — Installers for three platforms + psearch CLI + progress bar + index details + case-sensitive search.
 
-## 致谢
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
-本项目借鉴经典桌面搜索工具（如 DocFetcher）的核心设计逻辑（mtime 增量、文件树 diff、Parser 注册表），用现代 Rust 组件栈重新实现，并补齐了 OCR 能力。
+## Acknowledgements
 
-## 许可证
+This project draws on the core design logic of classic desktop search tools (such as DocFetcher) — mtime incrementality, file-tree diffing, Parser registry — re-implemented with a modern Rust component stack, and augmented with OCR capability.
+
+## License
 
 [Apache License 2.0](LICENSE)
