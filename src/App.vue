@@ -394,7 +394,6 @@ onUnmounted(() => {
     <!-- ═══ 顶部搜索栏 ═══ -->
     <header class="topbar">
       <div class="logo">
-        <span class="logo-icon">🔍</span>
         <span class="logo-text">PivotSearch</span>
       </div>
       <div class="search-input">
