@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-23
+
+### Changed
+- **桌面 UI 对齐 CloudPivot yuanli 主题**：主色绿 `#70b913`、设计 token、卡片式搜索结果、Element Plus 主题覆写、Lucide 图标（替换 emoji）。
+
 ## [0.4.0] - 2026-07-03
 
 ### Changed

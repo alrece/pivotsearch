@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-23
+
+### Changed
+- **Desktop UI aligned with CloudPivot yuanli theme**: primary green `#70b913`, shared design tokens, card-style search hits, Element Plus theme override, Lucide icons (replacing emoji).
+
 ## [0.5.0] - 2026-07-03
 
 ### Added
@@ -112,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Tauri desktop UI skeleton: Vue 3 frontend + #[tauri::command] bridge
 - CI + documentation: three-platform matrix + Chinese stop-word tuning
 
-[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/alrece/pivotsearch/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/alrece/pivotsearch/releases/tag/v0.5.1
 [0.5.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.5.0
 [0.4.0]: https://github.com/alrece/pivotsearch/releases/tag/v0.4.0
 [0.3.1]: https://github.com/alrece/pivotsearch/releases/tag/v0.3.1
