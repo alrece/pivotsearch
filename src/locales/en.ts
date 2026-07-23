@@ -20,7 +20,7 @@ export default {
   welcomeDesc:
     "Cross-platform local full-text search · Supports PDF/Word/Excel/Markdown and 9+ formats",
   addIndexToStart: "Add an index directory to get started",
-  emptySearchHint: "🔍 Enter a keyword above to start searching",
+  emptySearchHint: "Enter a keyword above to start searching",
 
   // ── Search result states ──
   searching: "Searching...",

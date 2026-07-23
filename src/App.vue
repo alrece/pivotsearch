@@ -1,7 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, type Component } from "vue";
 import { ElMessage } from "element-plus";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import {
+  Search,
+  FolderOpen,
+  FolderPlus,
+  Copy,
+  X,
+  FileText,
+  FileSpreadsheet,
+  Presentation,
+  BookOpen,
+  Globe,
+  Archive,
+  FileCode,
+  File,
+  Terminal,
+} from "lucide-vue-next";
 import {
   search as searchApi,
   listIndexes,
@@ -23,8 +39,7 @@ import { useI18n } from "./composables/useI18n";
 
 const { locale, t, toggleLocale } = useI18n();
 
-// ── Panel width (draggable splitter) ──
-const panelWidth = ref(50); // result-list width as a percentage
+const panelWidth = ref(50);
 let isDragging = false;
 
 function startDrag() {
@@ -53,19 +68,16 @@ function closePreview() {
   previewData.value = null;
 }
 
-// ── Search state ──
 const query = ref("");
 const results = ref<SearchResult[]>([]);
 const totalHits = ref(0);
 const loading = ref(false);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-// ── Selection / preview state ──
 const selectedIndex = ref(-1);
 const previewData = ref<PreviewData | null>(null);
 const previewLoading = ref(false);
 
-// ── Index management ──
 const indexes = ref<IndexInfo[]>([]);
 const showIndexDialog = ref(false);
 const newPath = ref("");
@@ -73,14 +85,11 @@ const progressMsg = ref("");
 const indexProgress = ref<{ processed: number; total: number; pct: number } | null>(null);
 const isIndexing = ref(false);
 
-// ── Index detail dialog ──
 const detailDialog = ref(false);
 const indexDetail = ref<any>(null);
 let unlistenProgress: (() => void) | null = null;
 
-// ── File type filter ──
-const filterType = ref(""); // empty = all
-// ── Case sensitivity ──
+const filterType = ref("");
 const caseSensitive = ref(false);
 const typeOptions = computed(() => [
   { label: t("typeAll"), value: "" },
@@ -93,8 +102,7 @@ const typeOptions = computed(() => [
   { label: t("typeText"), value: "txt" },
 ]);
 
-// ── Search scope (index dropdown) ──
-const searchScope = ref(""); // empty = all indexes
+const searchScope = ref("");
 const scopeOptions = computed(() => [
   { label: t("allScopes"), value: "" },
   ...indexes.value.map((idx) => ({
@@ -103,7 +111,6 @@ const scopeOptions = computed(() => [
   })),
 ]);
 
-// ── Filtered results ──
 const filteredResults = computed(() => {
   if (!filterType.value) return results.value;
   return results.value.filter(
@@ -111,7 +118,6 @@ const filteredResults = computed(() => {
   );
 });
 
-// ── Instant search ──
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
   if (!query.value.trim()) {
@@ -140,7 +146,6 @@ async function doSearch() {
   }
 }
 
-// ── Click a result item -> load preview ──
 async function selectResult(index: number) {
   selectedIndex.value = index;
   const result = filteredResults.value[index];
@@ -157,7 +162,6 @@ async function selectResult(index: number) {
   }
 }
 
-// ── Keyboard navigation ──
 function onKeydown(e: KeyboardEvent) {
   if (e.key === "ArrowDown") {
     e.preventDefault();
@@ -175,7 +179,6 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// ── Preview content highlighting ──
 function renderPreviewContent(content: string): string {
   if (!query.value || !content) return escapeHtml(content);
   const terms = query.value.split(/\s+/).filter(Boolean);
@@ -195,19 +198,15 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-// ── snippet highlighting (result list) ──
 function renderSnippet(snippet: string): string {
-  // snippet already contains <b> tags (highlighted by Rust), convert to <mark>
-  return snippet.replace(/<b>/g, '<mark>').replace(/<\/b>/g, "</mark>");
+  return snippet.replace(/<b>/g, "<mark>").replace(/<\/b>/g, "</mark>");
 }
 
-// ── Formatting ──
-// ── File action buttons ──
 async function onCopyPath(path: string) {
   try {
     await copyToClipboard(path);
     ElMessage.success(t("pathCopied"));
-  } catch (e) {
+  } catch {
     ElMessage.error(t("copyFailed"));
   }
 }
@@ -215,7 +214,7 @@ async function onCopyPath(path: string) {
 async function onOpenFolder(path: string) {
   try {
     await openInFolder(path);
-  } catch (e) {
+  } catch {
     ElMessage.error(t("openFolderFailed"));
   }
 }
@@ -224,7 +223,7 @@ async function onIndexDblClick(row: IndexInfo) {
   try {
     indexDetail.value = await getIndexDetails(row.id);
     detailDialog.value = true;
-  } catch (e) {
+  } catch {
     ElMessage.error(t("getDetailsFailed"));
   }
 }
@@ -250,23 +249,32 @@ function formatDate(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// ── Extract the filename (with extension) from a path ──
 function fileName(path: string): string {
   const parts = path.replace(/\\/g, "/").split("/");
   return parts[parts.length - 1] || path;
 }
 
-function fileIcon(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase();
-  const icons: Record<string, string> = {
-    pdf: "📄", doc: "📝", docx: "📝", xls: "📊", xlsx: "📊",
-    ppt: "📑", pptx: "📑", md: "📃", html: "🌐", htm: "🌐",
-    txt: "📄", epub: "📖", zip: "🗜️", tar: "🗜️",
+function fileIcon(path: string): Component {
+  const ext = path.split(".").pop()?.toLowerCase() || "";
+  const icons: Record<string, Component> = {
+    pdf: FileText,
+    doc: FileText,
+    docx: FileText,
+    xls: FileSpreadsheet,
+    xlsx: FileSpreadsheet,
+    ppt: Presentation,
+    pptx: Presentation,
+    md: FileCode,
+    html: Globe,
+    htm: Globe,
+    txt: FileText,
+    epub: BookOpen,
+    zip: Archive,
+    tar: Archive,
   };
-  return icons[ext || ""] || "📄";
+  return icons[ext] || File;
 }
 
-// ── Index management ──
 async function refreshIndexes() {
   try {
     indexes.value = await listIndexes();
@@ -275,7 +283,6 @@ async function refreshIndexes() {
   }
 }
 
-// ── Folder picker dialog ──
 async function browseFolder() {
   try {
     const selected = await openDialog({
@@ -297,7 +304,6 @@ async function onAddIndex() {
     isIndexing.value = true;
     await addIndex(newPath.value);
     newPath.value = "";
-    // Progress is driven by the onIndexProgress callback; no setTimeout here.
   } catch (e) {
     isIndexing.value = false;
     ElMessage.error(t("addFailed", { msg: String(e) }));
@@ -317,46 +323,17 @@ async function onRebuildIndex(id: string) {
   try {
     isIndexing.value = true;
     await rebuildIndex(id);
-    // Progress is driven by the onIndexProgress callback.
   } catch (e) {
     isIndexing.value = false;
     ElMessage.error(t("rebuildFailed", { msg: String(e) }));
   }
 }
 
-// ── Empty-state flags ──
 const hasSearched = computed(() => query.value.length > 0);
 const noIndexes = computed(() => indexes.value.length === 0);
 const noResults = computed(
   () => hasSearched.value && !loading.value && filteredResults.value.length === 0
 );
-
-// ── Lifecycle ──
-onMounted(async () => {
-  await refreshIndexes();
-  unlistenProgress = await onIndexProgress((p: IndexProgress) => {
-    progressMsg.value = p.message;
-    if (p.phase === "done") {
-      isIndexing.value = false;
-      indexProgress.value = null;
-      progressMsg.value = "";
-      ElMessage.success(t("indexComplete"));
-      refreshIndexes();
-    } else if (p.phase === "error") {
-      isIndexing.value = false;
-      indexProgress.value = null;
-      ElMessage.error(p.message);
-    } else {
-      isIndexing.value = true;
-      const pct = p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0;
-      indexProgress.value = { processed: p.processed, total: p.total, pct };
-    }
-  });
-  // Focus the search box
-  setTimeout(() => {
-    document.querySelector<HTMLInputElement>(".search-input input")?.focus();
-  }, 100);
-});
 
 onMounted(async () => {
   window.addEventListener("mousemove", onDrag);
@@ -394,9 +371,9 @@ onUnmounted(() => {
 
 <template>
   <div class="app" @keydown="onKeydown" tabindex="0">
-    <!-- ── Top search bar ── -->
     <header class="topbar">
       <div class="logo">
+        <span class="logo-mark" aria-hidden="true" />
         <span class="logo-text">PivotSearch</span>
       </div>
       <div class="search-input">
@@ -404,9 +381,13 @@ onUnmounted(() => {
           v-model="query"
           :placeholder="t('searchPlaceholder')"
           size="large"
-          @input="onSearchInput"
           clearable
-        />
+          @input="onSearchInput"
+        >
+          <template #prefix>
+            <Search :size="16" class="search-prefix-icon" />
+          </template>
+        </el-input>
       </div>
       <el-select v-model="searchScope" :placeholder="t('scope')" size="large" class="scope-select">
         <el-option
@@ -426,6 +407,7 @@ onUnmounted(() => {
       </el-select>
       <el-tooltip :content="caseSensitive ? t('caseSensitiveOn') : t('caseSensitiveOff')" placement="bottom">
         <button
+          type="button"
           class="case-toggle"
           :class="{ active: caseSensitive }"
           @click="caseSensitive = !caseSensitive; onSearchInput()"
@@ -433,23 +415,28 @@ onUnmounted(() => {
           Aa
         </button>
       </el-tooltip>
-      <el-button size="large" type="primary" @click="doSearch" :loading="loading">
+      <el-button size="large" type="primary" :loading="loading" @click="doSearch">
         {{ t('search') }}
       </el-button>
       <el-button size="large" @click="showIndexDialog = true">
         {{ t('indexManagement') }}
       </el-button>
-      <button class="lang-toggle" :title="locale === 'en' ? '中文' : 'English'" @click="toggleLocale">
+      <button
+        type="button"
+        class="lang-toggle"
+        :title="locale === 'en' ? '中文' : 'English'"
+        @click="toggleLocale"
+      >
         {{ locale === 'en' ? '中' : 'EN' }}
       </button>
     </header>
 
-    <!-- ── Main: left result list + right preview panel ── -->
     <main class="main-body">
-      <!-- No-index welcome -->
       <div v-if="noIndexes && !hasSearched" class="welcome-screen">
         <div class="welcome-content">
-          <div class="welcome-icon">📁</div>
+          <div class="welcome-icon">
+            <FolderPlus :size="48" :stroke-width="1.5" />
+          </div>
           <h2>{{ t('welcomeTitle') }}</h2>
           <p>{{ t('welcomeDesc') }}</p>
           <el-button type="primary" size="large" @click="showIndexDialog = true">
@@ -458,15 +445,12 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Search results layout -->
       <div v-else class="result-layout">
-        <!-- Left: result list -->
         <div class="result-panel" :style="{ flex: '0 0 ' + panelWidth + '%' }">
-          <!-- Result header -->
-          <div class="result-header" v-if="hasSearched">
+          <div v-if="hasSearched" class="result-header">
             <span v-if="loading">{{ t('searching') }}</span>
             <span v-else>{{ t('resultsFound', { n: totalHits }) }}</span>
-            <span class="result-filter" v-if="filterType">
+            <span v-if="filterType" class="result-filter">
               {{ t('filteredSuffix', { ext: filterType }) }}
             </span>
             <span v-if="isIndexing" class="indexing-hint">
@@ -474,71 +458,85 @@ onUnmounted(() => {
             </span>
           </div>
 
-          <!-- Empty search hint -->
           <div v-if="!hasSearched && !noIndexes" class="empty-search">
+            <Search :size="28" class="empty-icon" />
             <p>{{ t('emptySearchHint') }}</p>
           </div>
 
-          <!-- No results -->
           <div v-if="noResults" class="no-results">
+            <Search :size="28" class="empty-icon" />
             <p>{{ t('noResultsFound', { query }) }}</p>
             <p class="hint">{{ t('noResultsHint') }}</p>
           </div>
 
-          <!-- Result list -->
-          <div
-            v-for="(r, i) in filteredResults"
-            :key="r.uid"
-            class="result-item"
-            :class="{ selected: i === selectedIndex }"
-            @click="selectResult(i)"
-          >
-            <div class="result-item-header">
-              <span class="file-icon">{{ fileIcon(r.path) }}</span>
-              <span class="file-title">{{ fileName(r.path) }}</span>
-            </div>
-            <div
-              class="file-snippet"
-              v-html="renderSnippet(r.snippet)"
-            ></div>
-            <div class="file-meta">
-              <span class="meta-path">{{ r.path }}</span>
-              <span class="meta-sep">·</span>
-              <span>{{ formatSize(r.size) }}</span>
-              <span class="meta-sep">·</span>
-              <span>{{ formatDate(r.last_modified) }}</span>
-              <span class="meta-sep">·</span>
-              <span class="meta-parser">{{ r.parser }}</span>
-              <span class="meta-actions">
-                <button class="meta-btn" :title="t('copyPath')" @click.stop="onCopyPath(r.path)">📋</button>
-                <button class="meta-btn" :title="t('openFolder')" @click.stop="onOpenFolder(r.path)">📂</button>
-              </span>
-            </div>
+          <div v-if="filteredResults.length" class="result-list">
+            <article
+              v-for="(r, i) in filteredResults"
+              :key="r.uid"
+              class="result-item"
+              :class="{ selected: i === selectedIndex }"
+              :style="{ '--delay': `${Math.min(i, 12) * 40}ms` }"
+              @click="selectResult(i)"
+            >
+              <div class="result-item-header">
+                <component :is="fileIcon(r.path)" :size="14" class="file-icon" />
+                <span class="file-title">{{ fileName(r.path) }}</span>
+              </div>
+              <div class="file-snippet" v-html="renderSnippet(r.snippet)" />
+              <div class="file-meta">
+                <span class="meta-path">{{ r.path }}</span>
+                <span class="meta-sep">·</span>
+                <span>{{ formatSize(r.size) }}</span>
+                <span class="meta-sep">·</span>
+                <span>{{ formatDate(r.last_modified) }}</span>
+                <span class="meta-sep">·</span>
+                <span class="meta-parser">{{ r.parser }}</span>
+                <span class="meta-actions">
+                  <button
+                    type="button"
+                    class="meta-btn"
+                    :title="t('copyPath')"
+                    @click.stop="onCopyPath(r.path)"
+                  >
+                    <Copy :size="13" />
+                  </button>
+                  <button
+                    type="button"
+                    class="meta-btn"
+                    :title="t('openFolder')"
+                    @click.stop="onOpenFolder(r.path)"
+                  >
+                    <FolderOpen :size="13" />
+                  </button>
+                </span>
+              </div>
+            </article>
           </div>
         </div>
 
-        <!-- Draggable splitter -->
         <div
           v-if="selectedIndex >= 0 || previewLoading"
           class="splitter"
           @mousedown="startDrag"
-        ></div>
+        />
 
-        <!-- Right: preview panel -->
-        <div class="preview-panel" v-if="selectedIndex >= 0 || previewLoading">
+        <div v-if="selectedIndex >= 0 || previewLoading" class="preview-panel">
           <div class="preview-header">
             <span v-if="previewData" class="preview-title">
               {{ previewData.path.split("/").pop() }}
             </span>
             <span v-else>{{ t('previewLoading') }}</span>
-            <button class="preview-close" :title="t('close')" @click="closePreview">✕</button>
+            <button type="button" class="preview-close" :title="t('close')" @click="closePreview">
+              <X :size="16" />
+            </button>
           </div>
-          <div class="preview-content" v-loading="previewLoading">
+          <div v-loading="previewLoading" class="preview-content">
             <div v-if="previewData && previewData.exists" class="preview-text">
-              <pre v-html="renderPreviewContent(previewData.content)"></pre>
+              <pre v-html="renderPreviewContent(previewData.content)" />
             </div>
             <div v-else-if="previewData && !previewData.exists" class="preview-error">
-              <p>📁 {{ t('fileNotFound') }}</p>
+              <FolderOpen :size="32" class="empty-icon" />
+              <p>{{ t('fileNotFound') }}</p>
               <p class="hint">{{ previewData?.path }}</p>
             </div>
           </div>
@@ -546,23 +544,22 @@ onUnmounted(() => {
       </div>
     </main>
 
-    <!-- ── Bottom status bar ── -->
     <footer class="statusbar">
-      <!-- Index progress bar -->
       <template v-if="isIndexing && indexProgress">
         <span class="status-progress">
           {{ progressMsg || t('indexingProgress', { pct: indexProgress.pct, processed: indexProgress.processed, total: indexProgress.total }) }}
         </span>
         <el-progress
           :percentage="indexProgress?.pct ?? 0"
-          :stroke-width="14"
+          :stroke-width="8"
           :show-text="false"
           style="width: 200px; margin-left: 8px;"
         />
       </template>
       <span v-else-if="progressMsg" class="status-progress">{{ progressMsg }}</span>
       <span v-else-if="indexes.length > 0" class="status-info">
-        📂 {{ indexes.length }} {{ t('indexManagement') }}
+        <FolderOpen :size="13" class="status-icon" />
+        {{ indexes.length }} {{ t('indexManagement') }}
         <template v-for="(idx, i) in indexes" :key="idx.id">
           <span v-if="i > 0">·</span>
           {{ idx.display_name || idx.path.split("/").pop() }}
@@ -572,16 +569,20 @@ onUnmounted(() => {
       <span v-else class="status-info">{{ t('ready') }} · {{ t('addIndexToStart') }}</span>
     </footer>
 
-    <!-- ── Index management dialog ── -->
-    <el-dialog v-model="showIndexDialog" :title="t('indexManagementTitle')" width="600px">
+    <el-dialog v-model="showIndexDialog" :title="t('indexManagementTitle')" width="640px">
       <div class="index-add">
         <el-input
           v-model="newPath"
           :placeholder="t('selectIndexDir')"
           @keyup.enter="onAddIndex"
         />
-        <el-button @click="browseFolder">📁 {{ t('browseFolder') }}</el-button>
-        <el-button type="primary" @click="onAddIndex" :disabled="isIndexing">{{ t('addIndex') }}</el-button>
+        <el-button @click="browseFolder">
+          <FolderOpen :size="14" style="margin-right: 4px" />
+          {{ t('browseFolder') }}
+        </el-button>
+        <el-button type="primary" :disabled="isIndexing" @click="onAddIndex">
+          {{ t('addIndex') }}
+        </el-button>
       </div>
 
       <el-table :data="indexes" stripe style="width: 100%; margin-top: 16px" @row-dblclick="onIndexDblClick">
@@ -594,25 +595,40 @@ onUnmounted(() => {
         <el-table-column prop="file_count" :label="t('fileCount')" width="80" />
         <el-table-column :label="t('actions')" width="150">
           <template #default="{ row }">
-            <el-button size="small" @click="onRebuildIndex(row.id)" :disabled="isIndexing">{{ t('rebuild') }}</el-button>
-            <el-button size="small" type="danger" @click="onRemoveIndex(row.id)">{{ t('remove') }}</el-button>
+            <el-button size="small" :disabled="isIndexing" @click="onRebuildIndex(row.id)">
+              {{ t('rebuild') }}
+            </el-button>
+            <el-button size="small" type="danger" @click="onRemoveIndex(row.id)">
+              {{ t('remove') }}
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="cli-install">
-        <el-button @click="onInstallCli">💻 {{ t('installCli') }} (psearch)</el-button>
+        <el-button @click="onInstallCli">
+          <Terminal :size="14" style="margin-right: 4px" />
+          {{ t('installCli') }} (psearch)
+        </el-button>
       </div>
     </el-dialog>
 
-    <!-- ── Index detail dialog ── -->
-    <el-dialog v-model="detailDialog" :title="t('indexDetailTitle')" width="600px">
+    <el-dialog v-model="detailDialog" :title="t('indexDetailTitle')" width="640px">
       <div v-if="indexDetail" class="detail-content">
         <div class="detail-section">
           <h4>{{ t('indexDetailTitle') }}</h4>
-          <div class="detail-row"><span>{{ t('indexPath') }}</span><span>{{ indexDetail.name || indexDetail.path.split("/").pop() }}</span></div>
-          <div class="detail-row"><span>{{ t('indexPath') }}</span><span class="mono">{{ indexDetail.path }}</span></div>
-          <div class="detail-row"><span>{{ t('fileCount') }}</span><span>{{ indexDetail.file_count }}</span></div>
+          <div class="detail-row">
+            <span>{{ t('indexPath') }}</span>
+            <span>{{ indexDetail.name || indexDetail.path.split("/").pop() }}</span>
+          </div>
+          <div class="detail-row">
+            <span>{{ t('indexPath') }}</span>
+            <span class="mono">{{ indexDetail.path }}</span>
+          </div>
+          <div class="detail-row">
+            <span>{{ t('fileCount') }}</span>
+            <span>{{ indexDetail.file_count }}</span>
+          </div>
         </div>
 
         <div class="detail-section">
@@ -622,7 +638,7 @@ onUnmounted(() => {
             <span>
               <el-progress
                 :percentage="Math.round(stat.count / indexDetail.file_count * 100)"
-                :stroke-width="12"
+                :stroke-width="10"
                 :format="() => stat.count.toString()"
                 style="width: 150px;"
               />
@@ -651,80 +667,59 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style>
-:root {
-  --ps-primary: #1972f5;
-  --ps-primary-light: #e8f1ff;
-  --ps-bg: #f5f6f8;
-  --ps-surface: #ffffff;
-  --ps-border: #e4e7ed;
-  --ps-text: #303133;
-  --ps-text-secondary: #909399;
-  --ps-highlight: #fff3bf;
-  --ps-highlight-blue: #1972f5;
-  --ps-selected: #ecf5ff;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html, body, #app {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Noto Sans SC", "Microsoft YaHei", sans-serif;
-  font-size: 13px;
-  color: var(--ps-text);
-  background: var(--ps-bg);
-}
-
+<style scoped>
 .app {
   display: flex;
   flex-direction: column;
   height: 100vh;
   outline: none;
+  background: var(--color-bg-subtle);
 }
 
-/* ── Top search bar ── */
 .topbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--ps-surface);
-  border-bottom: 1px solid var(--ps-border);
+  height: var(--nav-height);
+  padding: 0 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
+  box-shadow: var(--shadow-1);
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   margin-right: 8px;
   flex-shrink: 0;
 }
 
-.logo-icon {
-  font-size: 20px;
+.logo-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary-6);
+  box-shadow: 0 0 0 3px var(--color-primary-2);
 }
 
 .logo-text {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--ps-primary);
+  color: var(--color-primary-6);
   white-space: nowrap;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 .search-input {
   flex: 1;
   min-width: 200px;
+}
+
+.search-prefix-icon {
+  color: var(--color-fg-muted);
+  display: block;
 }
 
 .scope-select {
@@ -737,114 +732,111 @@ body {
   flex-shrink: 0;
 }
 
-.case-toggle {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--ps-border);
-  border-radius: 6px;
-  background: var(--ps-surface);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ps-text-secondary);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.case-toggle:hover {
-  border-color: var(--ps-primary);
-}
-
-.case-toggle.active {
-  background: var(--ps-primary);
-  color: #fff;
-  border-color: var(--ps-primary);
-}
-
-/* Language toggle button — shares the case-toggle visual language. */
+.case-toggle,
 .lang-toggle {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--ps-border);
-  border-radius: 6px;
-  background: var(--ps-surface);
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: background var(--duration-fast) var(--ease-out-quart),
+              border-color var(--duration-fast),
+              color var(--duration-fast);
 }
 
+.case-toggle:hover,
 .lang-toggle:hover {
-  border-color: var(--ps-primary);
-  color: var(--ps-primary);
+  border-color: var(--color-primary-3);
+  color: var(--color-primary-7);
+  background: var(--color-primary-1);
 }
 
-/* ── Main body ── */
+.case-toggle.active {
+  background: var(--color-primary-6);
+  color: #fff;
+  border-color: var(--color-primary-7);
+  box-shadow: 0 0 0 1px var(--color-primary-7), 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
 .main-body {
   flex: 1;
   overflow: hidden;
   display: flex;
 }
 
-/* Welcome screen */
 .welcome-screen {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ps-bg);
+  background: var(--color-bg-subtle);
 }
 
 .welcome-content {
   text-align: center;
   max-width: 400px;
+  padding: 32px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
 }
 
 .welcome-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-xl);
+  background: var(--color-primary-1);
+  color: var(--color-primary-6);
 }
 
 .welcome-content h2 {
-  font-size: 22px;
+  font-size: 20px;
   margin-bottom: 8px;
-  color: var(--ps-text);
+  color: var(--color-fg);
+  font-weight: 600;
 }
 
 .welcome-content p {
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
   margin-bottom: 24px;
-  line-height: 1.6;
+  line-height: var(--leading-normal);
+  font-size: 14px;
 }
 
-/* Result layout */
 .result-layout {
   flex: 1;
   display: flex;
   overflow: hidden;
 }
 
-/* Left: result list */
 .result-panel {
   overflow-y: auto;
-  background: var(--ps-surface);
+  background: var(--color-bg-subtle);
   min-width: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .result-header {
-  padding: 8px 16px;
-  background: var(--ps-primary-light);
-  color: var(--ps-primary);
+  padding: 10px 16px;
+  background: var(--color-primary-1);
+  color: var(--color-primary-7);
   font-size: 12px;
-  border-bottom: 1px solid var(--ps-border);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-primary-2);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -852,80 +844,119 @@ body {
 
 .result-filter {
   margin-left: 4px;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
 }
 
-.empty-search, .no-results {
+.empty-search,
+.no-results {
   padding: 60px 20px;
   text-align: center;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-icon {
+  color: var(--color-fg-muted);
+  opacity: 0.7;
 }
 
 .no-results p {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  color: var(--color-fg);
+  font-size: 14px;
 }
 
 .hint {
   font-size: 12px;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 16px;
 }
 
 .result-item {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--ps-border);
+  padding: 12px 14px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.1s;
+  animation: hit-in 240ms var(--ease-out-quart) backwards;
+  animation-delay: var(--delay);
+  transition: border-color var(--duration-fast) var(--ease-out-quart),
+              box-shadow var(--duration-fast),
+              background var(--duration-fast);
 }
 
 .result-item:hover {
-  background: #f5f7fa;
+  border-color: var(--color-primary-3);
+  box-shadow: var(--shadow-1);
 }
 
 .result-item.selected {
-  background: var(--ps-selected);
-  border-left: 3px solid var(--ps-primary);
-  padding-left: 13px;
+  background: var(--color-primary-1);
+  border-color: var(--color-primary-6);
+  box-shadow: 0 0 0 1px var(--color-primary-6), var(--shadow-1);
+}
+
+@keyframes hit-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .result-item-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .file-icon {
-  font-size: 14px;
+  color: var(--color-primary-7);
+  flex-shrink: 0;
 }
 
 .file-title {
   font-weight: 600;
-  font-size: 13px;
-  color: var(--ps-text);
+  font-size: 14px;
+  color: var(--color-fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .file-snippet {
-  font-size: 12px;
-  color: var(--ps-text-secondary);
-  line-height: 1.5;
-  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--color-fg-subtle);
+  line-height: 1.6;
+  margin-bottom: 8px;
   max-height: 60px;
   overflow: hidden;
 }
 
-.file-snippet mark {
-  background: var(--ps-highlight);
-  color: var(--ps-text);
+.file-snippet :deep(mark) {
+  background: var(--color-highlight-bg);
+  color: var(--color-highlight-fg);
   border-radius: 2px;
-  padding: 0 1px;
+  padding: 0 2px;
+  font-weight: 500;
 }
 
 .file-meta {
   font-size: 11px;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -933,7 +964,7 @@ body {
 }
 
 .meta-path {
-  font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+  font-family: var(--font-mono);
   max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -945,62 +976,66 @@ body {
 }
 
 .meta-parser {
-  background: #f0f2f5;
-  padding: 0 4px;
-  border-radius: 2px;
+  background: var(--color-bg-muted);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-fg-subtle);
 }
 
 .meta-actions {
   display: inline-flex;
   gap: 2px;
-  margin-left: 4px;
+  margin-left: auto;
 }
 
 .meta-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
-  padding: 0 3px;
-  border-radius: 3px;
-  opacity: 0.5;
-  transition: opacity 0.1s, background 0.1s;
+  padding: 4px;
+  border-radius: var(--radius-xs);
+  color: var(--color-fg-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.65;
+  transition: opacity var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
 }
 
 .meta-btn:hover {
   opacity: 1;
-  background: #e8e8e8;
+  background: var(--state-hover);
+  color: var(--color-primary-7);
 }
 
-/* Draggable splitter */
 .splitter {
   width: 5px;
   flex-shrink: 0;
-  background: var(--ps-border);
+  background: var(--color-border-subtle);
   cursor: col-resize;
-  position: relative;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .splitter:hover,
 .splitter:active {
-  background: var(--ps-primary);
+  background: var(--color-primary-6);
 }
 
-/* Right: preview panel */
 .preview-panel {
   flex: 1;
   min-width: 200px;
   display: flex;
   flex-direction: column;
-  background: var(--ps-surface);
+  background: var(--color-surface);
   overflow: hidden;
+  border-left: 1px solid var(--color-border-subtle);
 }
 
 .preview-header {
-  padding: 8px 12px;
-  background: #f5f7fa;
-  border-bottom: 1px solid var(--ps-border);
+  padding: 10px 14px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
@@ -1008,6 +1043,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  color: var(--color-fg);
 }
 
 .preview-title {
@@ -1020,17 +1056,19 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 15px;
-  color: var(--ps-text-secondary);
-  padding: 2px 6px;
-  border-radius: 4px;
+  color: var(--color-fg-muted);
+  padding: 4px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
-  transition: background 0.1s, color 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast), color var(--duration-fast);
 }
 
 .preview-close:hover {
-  background: #e8e8e8;
-  color: var(--ps-text);
+  background: var(--state-hover);
+  color: var(--color-fg);
 }
 
 .preview-content {
@@ -1040,17 +1078,18 @@ body {
 }
 
 .preview-text pre {
-  font-family: -apple-system, "Segoe UI", "PingFang SC", sans-serif;
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: var(--ps-text);
+  color: var(--color-fg);
+  margin: 0;
 }
 
-.preview-text .hl {
-  background: #d4e8ff;
-  color: var(--ps-highlight-blue);
+.preview-text :deep(.hl) {
+  background: var(--color-highlight-bg);
+  color: var(--color-highlight-fg);
   font-weight: 600;
   padding: 0 2px;
   border-radius: 2px;
@@ -1059,23 +1098,27 @@ body {
 .preview-error {
   text-align: center;
   padding: 40px 20px;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .preview-error p {
-  margin-bottom: 8px;
+  margin: 0;
 }
 
-/* ── Bottom status bar ── */
 .statusbar {
-  padding: 6px 16px;
-  background: var(--ps-surface);
-  border-top: 1px solid var(--ps-border);
+  padding: 0 16px;
+  height: 32px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-subtle);
   font-size: 12px;
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1083,10 +1126,22 @@ body {
 }
 
 .status-progress {
-  color: var(--ps-primary);
+  color: var(--color-primary-7);
 }
 
-/* ── Index management dialog ── */
+.status-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-icon {
+  flex-shrink: 0;
+  color: var(--color-primary-6);
+}
+
 .index-add {
   display: flex;
   gap: 8px;
@@ -1095,20 +1150,15 @@ body {
 .cli-install {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--ps-border);
+  border-top: 1px solid var(--color-border-subtle);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.cli-hint {
-  font-size: 12px;
-  color: var(--ps-text-secondary);
-}
-
 .indexing-hint {
   margin-left: 8px;
-  color: #e6a23c;
+  color: var(--color-warning-6);
   font-size: 12px;
 }
 
@@ -1122,37 +1172,32 @@ body {
 }
 
 .detail-section h4 {
-  margin-bottom: 8px;
+  margin: 0 0 8px;
   font-size: 14px;
-  color: var(--ps-text);
-  border-bottom: 1px solid var(--ps-border);
-  padding-bottom: 4px;
+  color: var(--color-fg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding-bottom: 6px;
+  font-weight: 600;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
+  padding: 6px 0;
   font-size: 13px;
+  gap: 12px;
 }
 
 .detail-row span:first-child {
-  color: var(--ps-text-secondary);
+  color: var(--color-fg-muted);
+  flex-shrink: 0;
 }
 
 .mono {
-  font-family: "SF Mono", "Cascadia Code", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-}
-
-/* Element Plus overrides */
-.el-input__wrapper {
-  border-radius: 6px;
-}
-
-.el-button--primary {
-  --el-button-bg-color: var(--ps-primary);
-  --el-button-border-color: var(--ps-primary);
+  word-break: break-all;
+  text-align: right;
 }
 </style>

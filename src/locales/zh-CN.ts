@@ -20,7 +20,7 @@ export default {
   welcomeDesc:
     "跨平台本地全文搜索 · 支持 PDF/Word/Excel/Markdown 等 9 种格式",
   addIndexToStart: "添加索引目录开始使用",
-  emptySearchHint: "🔍 在上方输入关键词开始搜索",
+  emptySearchHint: "在上方输入关键词开始搜索",
 
   // ── 搜索结果状态 ──
   searching: "搜索中...",

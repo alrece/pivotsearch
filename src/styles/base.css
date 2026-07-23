@@ -1,0 +1,190 @@
+/* ============================================================
+   全局基础样式（对齐 cloudpivot web/src/styles/main.css）
+   由 src/main.ts 引入；无既有同名文件（Glob: src/styles 仅 theme.css）
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: var(--leading-normal);
+  color: var(--color-fg);
+  background-color: var(--color-bg-subtle);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-subtle);
+  overscroll-behavior-y: none;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out-quart);
+}
+a:hover {
+  color: var(--color-link-hover);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+::selection {
+  background-color: var(--color-primary-3);
+  color: var(--color-fg);
+}
+
+.dark ::selection {
+  background-color: var(--color-primary-7);
+  color: #fff;
+}
+
+/* 滚动条 — macOS 风格 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 焦点环 */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline-offset: 1px;
+}
+
+/* Element Plus 皮肤微调 */
+.el-button {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.el-button--primary {
+  --el-button-bg-color: var(--color-primary-6);
+  --el-button-border-color: var(--color-primary-7);
+  --el-button-hover-bg-color: var(--color-primary-7);
+  --el-button-hover-border-color: var(--color-primary-8);
+  --el-button-active-bg-color: var(--color-primary-8);
+  --el-button-active-border-color: var(--color-primary-8);
+  box-shadow: 0 0 0 1px var(--color-primary-7), 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+.el-button--large {
+  --el-button-size: 40px;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+.el-input__wrapper {
+  border-radius: var(--radius-sm);
+  background-color: var(--color-input);
+  box-shadow: 0 0 0 1px var(--color-border-subtle) inset;
+  transition: box-shadow var(--duration-fast) var(--ease-out-quart),
+              background-color var(--duration-fast);
+}
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--color-border-strong) inset;
+}
+.el-input__wrapper.is-focus {
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-primary) inset,
+              0 0 0 3px rgba(112, 185, 19, 0.16) !important;
+}
+.el-input--large .el-input__wrapper {
+  min-height: 40px;
+  padding: 0 14px;
+}
+.el-select .el-select__wrapper {
+  border-radius: var(--radius-sm);
+  min-height: 40px;
+  background-color: var(--color-input);
+  box-shadow: 0 0 0 1px var(--color-border-subtle) inset;
+}
+.el-select .el-select__wrapper.is-focused {
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-primary) inset,
+              0 0 0 3px rgba(112, 185, 19, 0.16) !important;
+}
+.el-dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+}
+.el-dialog__header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  margin-right: 0;
+}
+.el-dialog__title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-fg);
+}
+.el-dialog__body {
+  padding: 16px 20px 20px;
+}
+.el-table {
+  --el-table-border-color: var(--color-border-subtle);
+  --el-table-header-bg-color: var(--color-bg-subtle);
+  --el-table-row-hover-bg-color: var(--color-primary-1);
+  --el-table-header-text-color: var(--color-fg-subtle);
+  font-size: 13px;
+}
+.el-table th.el-table__cell {
+  font-weight: 600;
+}
+.el-progress-bar__inner {
+  background-color: var(--color-primary-6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

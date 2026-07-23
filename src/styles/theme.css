@@ -1,0 +1,178 @@
+/* ============================================================
+   PivotSearch Design Tokens (yuanli / cloudpivot aligned)
+   草绿主色 #70b913 — light 为主，dark 变量预留
+   ============================================================ */
+
+:root {
+  /* Brand */
+  --color-primary-1: #f5f8f0;
+  --color-primary-2: #ebf4e0;
+  --color-primary-3: #c3e598;
+  --color-primary-4: #a1e051;
+  --color-primary-5: #8be717;
+  --color-primary-6: #70b913;
+  --color-primary-7: #5e9a0e;
+  --color-primary-8: #4d7a0c;
+  --color-primary: var(--color-primary-6);
+  --color-primary-hover: var(--color-primary-7);
+  --color-primary-soft: var(--color-primary-2);
+  --color-primary-fg: #ffffff;
+
+  /* Neutral */
+  --color-neutral-1: #ffffff;
+  --color-neutral-2: #fcfdfe;
+  --color-neutral-3: #eceded;
+  --color-neutral-4: #dde2e9;
+  --color-neutral-5: #c9cdd4;
+  --color-neutral-6: #86909c;
+  --color-neutral-7: #4e5969;
+  --color-neutral-8: #333333;
+  --color-neutral-9: #1d2129;
+  --color-neutral-10: #0c0d0e;
+
+  /* Semantic — foundation */
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f7f9fb;
+  --color-bg-muted: #f1f4f8;
+  --color-surface: #ffffff;
+  --color-surface-dim: #fcfdfe;
+  --color-card: #ffffff;
+  --color-fg: #0c0d0e;
+  --color-fg-muted: #86909c;
+  --color-fg-subtle: #4e5969;
+  --color-border: #dde2e9;
+  --color-border-subtle: #eaedf1;
+  --color-border-strong: #c9cdd4;
+  --color-input: #eceded;
+  --color-link: #70b913;
+  --color-link-hover: #5e9a0e;
+
+  /* Semantic — status */
+  --color-danger-2: #feeced;
+  --color-danger-5: #f65159;
+  --color-danger-6: #d7312a;
+  --color-success-2: #e2f5eb;
+  --color-success-5: #1ebf6f;
+  --color-success-6: #189959;
+  --color-warning-2: #fdf3de;
+  --color-warning-5: #f5b433;
+  --color-warning-6: #bd7e00;
+  --color-info-5: #4585ff;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Layout */
+  --nav-height: 56px;
+
+  /* Shadow */
+  --shadow-1: 0 1px 2px 0 rgba(12, 13, 14, 0.05);
+  --shadow-2: 0 2px 6px 0 rgba(12, 13, 14, 0.08);
+  --shadow-3: 0 5px 15px 0 rgba(12, 13, 14, 0.08), 0 2px 4px 0 rgba(12, 13, 14, 0.04);
+
+  /* State overlays */
+  --state-hover: rgba(112, 185, 19, 0.10);
+  --state-focus: rgba(112, 185, 19, 0.18);
+  --state-press: rgba(112, 185, 19, 0.26);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC",
+    "Helvetica Neue", "Microsoft YaHei", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+
+  /* Motion */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* Highlight (search) */
+  --color-highlight-bg: var(--color-primary-2);
+  --color-highlight-fg: var(--color-primary-7);
+
+  /* ── Element Plus 变量映射（绿系） ── */
+  --el-color-primary: var(--color-primary-6);
+  --el-color-primary-light-3: #8fcf45;
+  --el-color-primary-light-5: #b8df8a;
+  --el-color-primary-light-7: #d4ebb8;
+  --el-color-primary-light-8: #e3f2d1;
+  --el-color-primary-light-9: var(--color-primary-1);
+  --el-color-primary-dark-2: var(--color-primary-7);
+
+  --el-color-success: var(--color-success-6);
+  --el-color-warning: var(--color-warning-6);
+  --el-color-danger: var(--color-danger-6);
+  --el-color-info: var(--color-neutral-6);
+
+  --el-bg-color: var(--color-bg);
+  --el-bg-color-page: var(--color-bg-subtle);
+  --el-bg-color-overlay: var(--color-surface);
+  --el-text-color-primary: var(--color-fg);
+  --el-text-color-regular: var(--color-fg-subtle);
+  --el-text-color-secondary: var(--color-fg-muted);
+  --el-text-color-placeholder: var(--color-fg-muted);
+  --el-border-color: var(--color-border);
+  --el-border-color-light: var(--color-border-subtle);
+  --el-border-color-lighter: var(--color-border-subtle);
+  --el-border-color-extra-light: var(--color-bg-muted);
+  --el-fill-color: var(--color-bg-muted);
+  --el-fill-color-light: var(--color-bg-subtle);
+  --el-fill-color-blank: var(--color-surface);
+  --el-mask-color: rgba(12, 13, 14, 0.45);
+  --el-border-radius-base: var(--radius-sm);
+  --el-border-radius-small: var(--radius-xs);
+  --el-font-family: var(--font-sans);
+  --el-font-size-base: 14px;
+}
+
+.dark {
+  --color-bg: #0c0d0e;
+  --color-bg-subtle: #1d2129;
+  --color-bg-muted: #202833;
+  --color-surface: #1d2129;
+  --color-surface-dim: #000b1a;
+  --color-card: #1d2129;
+  --color-fg: #ffffff;
+  --color-fg-muted: #c9cdd4;
+  --color-fg-subtle: #86909c;
+  --color-border: #333333;
+  --color-border-subtle: #2a3440;
+  --color-border-strong: #41464f;
+  --color-input: #41464f;
+  --color-link: #8be717;
+  --color-link-hover: #a1e051;
+
+  --color-danger-5: #ff706d;
+  --color-danger-6: #ff706d;
+  --color-success-5: #7ccd94;
+  --color-success-6: #7ccd94;
+  --color-warning-5: #f0a50f;
+  --color-warning-6: #f0a50f;
+
+  --state-hover: rgba(112, 185, 19, 0.18);
+  --state-focus: rgba(112, 185, 19, 0.24);
+  --state-press: rgba(112, 185, 19, 0.32);
+
+  --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 6px 0 rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 5px 15px 0 rgba(0, 0, 0, 0.55), 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+
+  --color-highlight-bg: rgba(112, 185, 19, 0.18);
+  --color-highlight-fg: var(--color-primary-4);
+}

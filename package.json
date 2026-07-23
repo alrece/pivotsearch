@@ -13,6 +13,7 @@
     "@tauri-apps/api": "2.11.1",
     "@tauri-apps/plugin-dialog": "2.7.1",
     "element-plus": "^2.7.0",
+    "lucide-vue-next": "^1.0.0",
     "pinia": "^2.1.0",
     "vue": "^3.4.0"
   },
