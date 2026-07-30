@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-30
+
+### Fixed
+- **PDF 索引**：桌面端默认注册 `PdfParser`；PDFium 从环境变量 / app Resources / `native/pdfium` 解析；解析失败可重试（不再永久跳过）；Release CI 下载并打包 PDFium。
+
 ## [0.5.1] - 2026-07-23
 
 ### Changed
