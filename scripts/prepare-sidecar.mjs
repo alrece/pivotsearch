@@ -17,7 +17,32 @@ const targetMatch = rustcV.match(/host:\s*(.+)/);
 const target = targetMatch ? targetMatch[1].trim() : process.platform + "-unknown";
 const ext = process.platform === "win32" ? ".exe" : "";
 
-console.log(`📦 编译 psearch CLI (target: ${target})...`);
+function pdfiumLibName() {
+  if (process.platform === "darwin") return "libpdfium.dylib";
+  if (process.platform === "win32") return "pdfium.dll";
+  return "libpdfium.so";
+}
+
+function ensurePdfium() {
+  const libName = pdfiumLibName();
+  const srcLib = join(root, "native", "pdfium", "lib", libName);
+  if (!existsSync(srcLib)) {
+    console.log(`PDFium missing (${libName}), running scripts/fetch-pdfium.sh ...`);
+    try {
+      execSync("bash scripts/fetch-pdfium.sh", { cwd: root, stdio: "inherit" });
+    } catch {
+      console.warn("fetch-pdfium.sh failed; PDF indexing may be unavailable at runtime");
+      return null;
+    }
+  }
+  if (!existsSync(srcLib)) {
+    console.warn(`PDFium still missing: ${srcLib}`);
+    return null;
+  }
+  return srcLib;
+}
+
+console.log(`编译 psearch CLI (target: ${target})...`);
 
 // 编译 psearch
 execSync("cargo build --release -p psearch", { cwd: root, stdio: "inherit" });
@@ -28,10 +53,21 @@ const binDir = join(root, "src-tauri", "binaries");
 const dst = join(binDir, `psearch-${target}${ext}`);
 
 if (!existsSync(src)) {
-  console.error(`❌ 编译产物不存在: ${src}`);
+  console.error(`编译产物不存在: ${src}`);
   process.exit(1);
 }
 
 mkdirSync(binDir, { recursive: true });
 copyFileSync(src, dst);
-console.log(`✅ sidecar 就位: src-tauri/binaries/psearch-${target}${ext}`);
+console.log(`sidecar 就位: src-tauri/binaries/psearch-${target}${ext}`);
+
+// PDFium next to sidecar + under Resources for the desktop app
+const pdfiumSrc = ensurePdfium();
+if (pdfiumSrc) {
+  const libName = pdfiumLibName();
+  copyFileSync(pdfiumSrc, join(binDir, libName));
+  const resDir = join(root, "src-tauri", "resources", "pdfium");
+  mkdirSync(resDir, { recursive: true });
+  copyFileSync(pdfiumSrc, join(resDir, libName));
+  console.log(`PDFium 就位: binaries/${libName} + resources/pdfium/${libName}`);
+}

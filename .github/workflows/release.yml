@@ -54,6 +54,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: 下载 PDFium
+        run: bash scripts/fetch-pdfium.sh
+
       # 编译 psearch CLI sidecar（跨平台 node 脚本）
       - name: 编译 psearch sidecar
         run: node scripts/prepare-sidecar.mjs

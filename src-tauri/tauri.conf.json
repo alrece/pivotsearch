@@ -36,7 +36,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [],
+    "resources": [
+      "resources/pdfium/*"
+    ],
     "macOS": {
       "signingIdentity": null,
       "entitlements": null

@@ -160,10 +160,16 @@ pub fn update_incremental_with_progress(
                     Err(_) => stats.errors += 1,
                 }
             }
-            Some(old) if old.mtime != mtime => {
-                // Modified file: delete + add (upsert)
+            Some(old) if old.mtime != mtime || needs_reindex(&old) => {
+                // Modified, prior parse failure, or legacy null-parser PDF → (re)index
                 match index_one(path, fields, writer, parser_registry, &config.index_id, mtime, tree_index) {
-                    Ok(true) => stats.modified += 1,
+                    Ok(true) => {
+                        if old.mtime != mtime {
+                            stats.modified += 1;
+                        } else {
+                            stats.added += 1;
+                        }
+                    }
                     Ok(false) => stats.errors += 1,
                     Err(_) => stats.errors += 1,
                 }
@@ -202,8 +208,29 @@ pub fn update_incremental_with_progress(
     }
 }
 
+/// Marker stored in `IndexedFile.parser` when content parse fails.
+/// Incremental updates re-try these entries even if mtime is unchanged
+/// (e.g. PDFium was missing at first index, then became available).
+pub const PARSE_FAILED_MARKER: &str = "__parse_failed__";
+
+fn needs_reindex(old: &IndexedFile) -> bool {
+    if old.parser.as_deref() == Some(PARSE_FAILED_MARKER) {
+        return true;
+    }
+    // Legacy rows: parse failures used to be stored as parser=null (same as
+    // UnsupportedFormat). Re-try only `.pdf` so we recover missing PDFium
+    // content without re-walking every unsupported extension on each update.
+    if old.parser.is_none() {
+        return Path::new(&old.path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+    }
+    false
+}
+
 /// Index a single file: parse → upsert Tantivy doc → record in tree_index.
-/// Returns true on success, false on parse failure (tree_index is still recorded to avoid retries).
+/// Returns true on success, false on parse / unsupported failure.
 fn index_one(
     path: &Path,
     fields: &SchemaFields,
@@ -235,7 +262,7 @@ fn index_one(
             Ok(true)
         }
         Err(PivotsearchError::UnsupportedFormat(_)) => {
-            // Unsupported format: still record it in tree_index (parser=null) to avoid retrying next time
+            // Unsupported format: record with parser=null so we skip forever
             tree_index.upsert_file(&IndexedFile {
                 uid,
                 path: path_str,
@@ -246,13 +273,13 @@ fn index_one(
             Ok(false)
         }
         Err(e) => {
-            // Parse failure: record in tree_index (parser=null) to avoid retrying bad files
+            // Parse failure: mark for retry on next incremental (do not treat as success)
             tracing::warn!("解析失败 {}: {}", path.display(), e);
             tree_index.upsert_file(&IndexedFile {
                 uid,
                 path: path_str,
                 mtime,
-                parser: None,
+                parser: Some(PARSE_FAILED_MARKER.to_string()),
                 index_id: index_id.to_string(),
             })?;
             Ok(false)
@@ -435,5 +462,121 @@ mod tests {
         let result = update_incremental(dir.path(), IndexAction::Update, &config, &fields, &mut writer, &ti, &registry).unwrap();
         assert_eq!(result, UpdateResult::SuccessChanged);
         assert_eq!(ti.count_files("default").unwrap(), 1);
+    }
+
+    #[test]
+    fn needs_reindex_failed_marker_and_legacy_pdf() {
+        let failed = IndexedFile {
+            uid: "u1".into(),
+            path: "/tmp/a.pdf".into(),
+            mtime: 1,
+            parser: Some(PARSE_FAILED_MARKER.to_string()),
+            index_id: "default".into(),
+        };
+        assert!(needs_reindex(&failed));
+
+        let legacy_pdf = IndexedFile {
+            uid: "u2".into(),
+            path: "/tmp/b.pdf".into(),
+            mtime: 1,
+            parser: None,
+            index_id: "default".into(),
+        };
+        assert!(needs_reindex(&legacy_pdf));
+
+        let unsupported = IndexedFile {
+            uid: "u3".into(),
+            path: "/tmp/c.doc".into(),
+            mtime: 1,
+            parser: None,
+            index_id: "default".into(),
+        };
+        assert!(!needs_reindex(&unsupported));
+
+        let ok = IndexedFile {
+            uid: "u4".into(),
+            path: "/tmp/d.txt".into(),
+            mtime: 1,
+            parser: Some("DummyParser".into()),
+            index_id: "default".into(),
+        };
+        assert!(!needs_reindex(&ok));
+    }
+
+    #[test]
+    fn incremental_retries_parse_failed_marker() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        struct FlakyRegistry {
+            calls: Arc<AtomicUsize>,
+        }
+        impl ParserRegistry for FlakyRegistry {
+            fn parse(&self, path: &Path) -> Result<ParseResult> {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 {
+                    return Err(PivotsearchError::ParseFailed {
+                        path: path.display().to_string(),
+                        reason: "simulated".into(),
+                    });
+                }
+                DummyParser.parse(path).map(|mut r| {
+                    r.parser_name = "DummyParser";
+                    r
+                })
+            }
+            fn can_parse_by_name(&self, name: &str) -> bool {
+                name.ends_with(".txt")
+            }
+            fn list_parser_names(&self) -> Vec<&'static str> {
+                vec!["DummyParser"]
+            }
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        std::fs::write(&path, "hello").unwrap();
+
+        let (index, fields, _reader) = setup_index();
+        let mut writer = index.writer(50_000_000).unwrap();
+        let ti = TreeIndex::open_memory().unwrap();
+        ti.add_index_root("default", dir.path().to_str().unwrap(), None, 0)
+            .unwrap();
+
+        let config = IncrementalConfig::default();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let registry = FlakyRegistry {
+            calls: calls.clone(),
+        };
+
+        // First run: parse fails → marker stored
+        update_incremental(
+            dir.path(),
+            IndexAction::Update,
+            &config,
+            &fields,
+            &mut writer,
+            &ti,
+            &registry,
+        )
+        .unwrap();
+        let files = ti.files_for_index("default").unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].parser.as_deref(), Some(PARSE_FAILED_MARKER));
+
+        // Second run: mtime unchanged but marker → retry succeeds
+        update_incremental(
+            dir.path(),
+            IndexAction::Update,
+            &config,
+            &fields,
+            &mut writer,
+            &ti,
+            &registry,
+        )
+        .unwrap();
+        let files = ti.files_for_index("default").unwrap();
+        assert_eq!(files[0].parser.as_deref(), Some("DummyParser"));
+        assert!(calls.load(Ordering::SeqCst) >= 2);
     }
 }

@@ -14,7 +14,7 @@ pub struct ParserRegistryImpl {
 }
 
 impl ParserRegistryImpl {
-    /// Builds the registry with all built-in parsers.
+    /// Builds the registry with all built-in parsers (including PDF).
     pub fn with_builtin_parsers() -> Self {
         let parsers: Vec<Box<dyn Parser>> = vec![
             Box::new(crate::text::TextParser),
@@ -24,13 +24,16 @@ impl ParserRegistryImpl {
             Box::new(crate::xlsx::SpreadsheetParser),
             Box::new(crate::epub::EpubParser),
             Box::new(crate::pptx::PptxParser),
+            Box::new(crate::pdf::PdfParser::default()),
         ];
         Self { parsers }
     }
 
-    /// Enables PDF parsing on top of the defaults.
+    /// Ensures PDF parsing is registered (no-op if already present via [`Self::with_builtin_parsers`]).
     pub fn with_pdf(mut self) -> Self {
-        self.parsers.push(Box::new(crate::pdf::PdfParser::default()));
+        if !self.parsers.iter().any(|p| p.name() == "PdfParser") {
+            self.parsers.push(Box::new(crate::pdf::PdfParser::default()));
+        }
         self
     }
 
@@ -171,5 +174,12 @@ mod tests {
         assert!(names.contains(&"TextParser"));
         assert!(names.contains(&"MarkdownParser"));
         assert!(names.contains(&"HtmlParser"));
+        assert!(names.contains(&"PdfParser"));
+    }
+
+    #[test]
+    fn registry_can_parse_pdf_extension() {
+        let reg = ParserRegistryImpl::with_builtin_parsers();
+        assert!(reg.can_parse_by_name("paper.pdf"));
     }
 }

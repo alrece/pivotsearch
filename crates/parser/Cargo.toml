@@ -20,6 +20,7 @@ pulldown-cmark = "0.13.4"
 scraper = "0.27.0"
 tar = "0.4.46"
 tempfile = "3"
+tracing.workspace = true
 walkdir.workspace = true
 zip = "4.2.0"
 
