@@ -88,8 +88,9 @@ pub fn build_document(
 
     doc.add_text(fields.index_id, index_id);
 
-    // —— snippet_text: first 500 chars of content, stored, for SnippetGenerator highlighting ——
-    let snippet_source: String = parse_result.content.chars().take(500).collect();
+    // —— snippet_text: prefix of content, stored for fast highlight fallback ——
+    // Long enough for many short docs; deep hits still re-load via ContentLoader.
+    let snippet_source: String = parse_result.content.chars().take(50_000).collect();
     doc.add_text(fields.snippet_text, &snippet_source);
 
     // —— content field (multivalued concatenation) ——

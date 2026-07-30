@@ -205,6 +205,7 @@ async fn search(
     // Build a SimpleSearcher for each index and add it to the MultiIndexSearcher
     let mut multi = MultiIndexSearcher::new();
     let (_schema, fields, tokenizer_manager) = build_schema();
+    let registry = std::sync::Arc::new(ParserRegistryImpl::with_builtin_parsers());
 
     for (index_id, index_dir) in &index_dirs {
         let tantivy_dir = index_dir.join("tantivy");
@@ -234,7 +235,13 @@ async fn search(
             index_id: fields.index_id,
         };
         match SimpleSearcher::new(index, search_fields, tokenizer_manager.clone()) {
-            Ok(s) => multi.add(index_id.clone(), s),
+            Ok(s) => {
+                let registry = registry.clone();
+                let loader: pivotsearch_search::ContentLoader = std::sync::Arc::new(move |path| {
+                    registry.parse(path).ok().map(|r| r.content)
+                });
+                multi.add(index_id.clone(), s.with_content_loader(loader));
+            }
             Err(e) => tracing::warn!("构造 searcher {} 失败: {}", index_id, e),
         }
     }

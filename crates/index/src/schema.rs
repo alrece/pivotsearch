@@ -12,7 +12,7 @@ use tantivy::tokenizer::{TextAnalyzer, TokenizerManager};
 pub mod field_names {
     pub const UID: &str = "uid";
     pub const CONTENT: &str = "content";
-    pub const SNIPPET_TEXT: &str = "snippet_text";  // first 500 chars of content, stored, for highlighting
+    pub const SNIPPET_TEXT: &str = "snippet_text"; // content prefix (stored) for highlight fallback
     pub const TITLE: &str = "title";
     pub const AUTHOR: &str = "author";
     pub const TYPE: &str = "type";
@@ -69,7 +69,7 @@ pub fn build_schema() -> (Schema, SchemaFields, TokenizerManager) {
     );
     // content: jieba tokenization, not stored (saves space; re-parsed at preview time)
     let content = builder.add_text_field(field_names::CONTENT, jieba_text_options(false));
-    // snippet_text: first 500 chars of content, jieba tokenization + stored, for SnippetGenerator highlighting
+    // snippet_text: content prefix, jieba + stored, for highlight fallback
     let snippet_text = builder.add_text_field(field_names::SNIPPET_TEXT, jieba_text_options(true));
     // title: jieba tokenization + stored
     let title = builder.add_text_field(field_names::TITLE, jieba_text_options(true));

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, type Component } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, type Component } from "vue";
 import { ElMessage } from "element-plus";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
@@ -77,6 +77,7 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 const selectedIndex = ref(-1);
 const previewData = ref<PreviewData | null>(null);
 const previewLoading = ref(false);
+const previewContentEl = ref<HTMLElement | null>(null);
 
 const indexes = ref<IndexInfo[]>([]);
 const showIndexDialog = ref(false);
@@ -159,7 +160,54 @@ async function selectResult(index: number) {
     previewData.value = null;
   } finally {
     previewLoading.value = false;
+    await nextTick();
+    // Wait for v-html + loading overlay to settle before scrolling
+    requestAnimationFrame(() => {
+      scrollPreviewToFirstHit();
+    });
   }
+}
+
+function scrollPreviewToFirstHit() {
+  const root = previewContentEl.value;
+  if (!root) return;
+  const hit = root.querySelector(".hl");
+  if (hit instanceof HTMLElement) {
+    hit.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
+/** Highlight terms: keep CJK phrases whole; longest first (same idea as result snippets). */
+function previewHighlightTerms(q: string): string[] {
+  const trimmed = q.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "");
+  if (!trimmed) return [];
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const terms = [...parts];
+  if (!/\s/.test(trimmed) && !terms.includes(trimmed)) {
+    terms.unshift(trimmed);
+  }
+  return [...new Set(terms)].sort((a, b) => b.length - a.length);
+}
+
+function renderPreviewContent(content: string): string {
+  if (!content) return "";
+  // PDF extract often uses NBSP; normalize so phrase highlight matches list snippets
+  const normalized = content.replace(/\u00a0/g, " ");
+  if (!query.value) return escapeHtml(normalized);
+
+  const terms = previewHighlightTerms(query.value);
+  let result = escapeHtml(normalized);
+  const flags = caseSensitive.value ? "g" : "gi";
+
+  for (const term of terms) {
+    if (!term) continue;
+    // Avoid highlighting single ASCII letters (noise); keep CJK / multi-char terms
+    if (term.length === 1 && /^[a-zA-Z0-9]$/.test(term)) continue;
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escaped})`, flags);
+    result = result.replace(regex, '<span class="hl">$1</span>');
+  }
+  return result;
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -177,18 +225,6 @@ function onKeydown(e: KeyboardEvent) {
     if (searchTimer) clearTimeout(searchTimer);
     doSearch();
   }
-}
-
-function renderPreviewContent(content: string): string {
-  if (!query.value || !content) return escapeHtml(content);
-  const terms = query.value.split(/\s+/).filter(Boolean);
-  let result = escapeHtml(content);
-  for (const term of terms) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(${escaped})`, "gi");
-    result = result.replace(regex, '<span class="hl">$1</span>');
-  }
-  return result;
 }
 
 function escapeHtml(s: string): string {
@@ -530,7 +566,7 @@ onUnmounted(() => {
               <X :size="16" />
             </button>
           </div>
-          <div v-loading="previewLoading" class="preview-content">
+          <div ref="previewContentEl" v-loading="previewLoading" class="preview-content">
             <div v-if="previewData && previewData.exists" class="preview-text">
               <pre v-html="renderPreviewContent(previewData.content)" />
             </div>

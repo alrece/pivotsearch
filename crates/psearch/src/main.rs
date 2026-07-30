@@ -249,6 +249,7 @@ fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>, lang: &Lang) -> M
     let t = T(lang);
     let (_schema, fields, tm) = build_schema();
     let mut multi = MultiIndexSearcher::new();
+    let registry = std::sync::Arc::new(ParserRegistryImpl::with_builtin_parsers());
 
     for (index_id, index_dir) in index_dirs {
         let tantivy_dir = index_dir.join("tantivy");
@@ -282,7 +283,13 @@ fn build_multi_searcher(index_dirs: &HashMap<String, PathBuf>, lang: &Lang) -> M
             index_id: fields.index_id,
         };
         match SimpleSearcher::new(index, search_fields, tm.clone()) {
-            Ok(s) => multi.add(index_id.clone(), s),
+            Ok(s) => {
+                let registry = registry.clone();
+                let loader: pivotsearch_search::ContentLoader = std::sync::Arc::new(move |path| {
+                    registry.parse(path).ok().map(|r| r.content)
+                });
+                multi.add(index_id.clone(), s.with_content_loader(loader));
+            }
             Err(e) => eprintln!(
                 "{}",
                 t.s(
